@@ -4,12 +4,14 @@ import { z } from "zod";
 import {
   castVote as castRepoVote,
   createPoll,
-  readLivePoll,
+  listPolls,
+  readPoll,
   seedIfEmpty,
   type LivePoll,
+  type PollSummary,
 } from "./poll-repo";
 
-export type { LivePoll, PollOption } from "./poll-repo";
+export type { LivePoll, PollOption, PollSummary } from "./poll-repo";
 
 const VOTER_COOKIE = "pulse_vk";
 const VOTER_MAX_AGE = 60 * 60 * 24 * 400;
@@ -38,9 +40,25 @@ export const fetchLivePoll = createServerFn({ method: "GET" }).handler(
     const sql = await getDb();
     const key = voterKey();
     await seedIfEmpty(sql);
-    const poll = await readLivePoll(sql, key);
+    const poll = await readPoll(sql, key);
     if (!poll) throw new Error("没有进行中的投票");
     return poll;
+  },
+);
+
+export const fetchPollById = createServerFn({ method: "GET" })
+  .validator(z.object({ pollId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<LivePoll | null> => {
+    const sql = await getDb();
+    const key = voterKey();
+    return readPoll(sql, key, data.pollId);
+  });
+
+export const fetchPollList = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PollSummary[]> => {
+    const sql = await getDb();
+    await seedIfEmpty(sql);
+    return listPolls(sql);
   },
 );
 
@@ -56,15 +74,20 @@ export const createLivePoll = createServerFn({ method: "POST" })
     const key = voterKey();
     const labels = data.options.map((label) => label.trim()).filter(Boolean);
     await createPoll(sql, data.question.trim(), labels);
-    const poll = await readLivePoll(sql, key);
+    const poll = await readPoll(sql, key);
     if (!poll) throw new Error("创建失败");
     return poll;
   });
 
 export const castVote = createServerFn({ method: "POST" })
-  .validator(z.object({ optionId: z.string().min(1) }))
+  .validator(
+    z.object({
+      optionId: z.string().min(1),
+      pollId: z.string().min(1).optional(),
+    }),
+  )
   .handler(async ({ data }): Promise<LivePoll> => {
     const sql = await getDb();
     const key = voterKey();
-    return castRepoVote(sql, key, data.optionId);
+    return castRepoVote(sql, key, data.optionId, data.pollId);
   });

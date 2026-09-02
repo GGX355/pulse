@@ -27,11 +27,32 @@ export type Sql = {
 const SEED_POLL_ID = "seed-lunch";
 const SEED_OPTIONS = ["拉面", "便当", "沙拉", "随便"];
 
-/** The newest poll with live counts, plus whether `key` has voted on it. */
-export async function readLivePoll(sql: Sql, key: string): Promise<LivePoll | null> {
-  const polls = await sql.query<{ id: string; question: string }>(
-    `select id, question from polls order by created_at desc limit 1`,
-  );
+/** One row of the polls list: newest-first summaries for /polls. */
+export type PollSummary = {
+  id: string;
+  question: string;
+  total: number;
+  /** Epoch milliseconds — int8 comes back as number via the db type parsers. */
+  createdAtMs: number;
+};
+
+/**
+ * One poll with live counts, plus whether `key` has voted on it.
+ * `pollId` omitted = the newest poll (the "live" one).
+ */
+export async function readPoll(
+  sql: Sql,
+  key: string,
+  pollId?: string,
+): Promise<LivePoll | null> {
+  const polls = pollId
+    ? await sql.query<{ id: string; question: string }>(
+        `select id, question from polls where id = $1 limit 1`,
+        [pollId],
+      )
+    : await sql.query<{ id: string; question: string }>(
+        `select id, question from polls order by created_at desc limit 1`,
+      );
   const poll = polls[0];
   if (!poll) return null;
 
@@ -108,18 +129,46 @@ export async function createPoll(
   return id;
 }
 
+/** Newest-first poll summaries for the list page. */
+export async function listPolls(sql: Sql, limit = 50): Promise<PollSummary[]> {
+  const rows = await sql.query<{
+    id: string;
+    question: string;
+    total: number;
+    created_ms: number;
+  }>(
+    `select p.id, p.question,
+            count(v.id)::int as total,
+            (extract(epoch from p.created_at) * 1000)::bigint as created_ms
+     from polls p
+     left join poll_options o on o.poll_id = p.id
+     left join poll_votes v on v.option_id = o.id
+     group by p.id, p.question, p.created_at
+     order by p.created_at desc
+     limit $1`,
+    [limit],
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    question: row.question,
+    total: Number(row.total),
+    createdAtMs: Number(row.created_ms),
+  }));
+}
+
 /**
- * Cast one vote as `key` on the current live poll. Returns the poll state
- * after the attempt. The `unique (poll_id, voter_key)` constraint makes repeat
- * votes a no-op — the re-read below is what keeps the response honest even
- * under a race.
+ * Cast one vote as `key` on the current live poll (or `pollId` when given).
+ * Returns the poll state after the attempt. The `unique (poll_id, voter_key)`
+ * constraint makes repeat votes a no-op — the re-read below is what keeps the
+ * response honest even under a race.
  */
 export async function castVote(
   sql: Sql,
   key: string,
   optionId: string,
+  pollId?: string,
 ): Promise<LivePoll> {
-  const live = await readLivePoll(sql, key);
+  const live = await readPoll(sql, key, pollId);
   if (!live) throw new Error("没有进行中的投票");
   if (live.votedId) return live;
 
@@ -133,7 +182,7 @@ export async function castVote(
     [crypto.randomUUID(), live.id, optionId, key],
   );
 
-  const next = await readLivePoll(sql, key);
+  const next = await readPoll(sql, key, live.id);
   if (!next) throw new Error("投票失败");
   return next;
 }

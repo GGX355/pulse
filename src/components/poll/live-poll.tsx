@@ -1,26 +1,39 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { castVote, fetchLivePoll, type LivePoll } from "@/lib/poll-api";
+import {
+  castVote,
+  fetchLivePoll,
+  fetchPollById,
+  type LivePoll,
+} from "@/lib/poll-api";
 import { OptionRow } from "@/components/poll/option-row";
 import { Button } from "@/components/ui/button";
 
-export function LivePollView({ initialData }: { initialData?: LivePoll }) {
+/**
+ * One live poll channel: 1.2s refetch keeps every open tab on the same true
+ * counts, and the vote mutation updates optimistically so the tap lands
+ * instantly. `pollId` targets a specific poll (detail page); without it the
+ * channel follows the newest poll (home / live page).
+ */
+function useLivePoll(pollId: string | undefined, initialData?: LivePoll) {
   const queryClient = useQueryClient();
+  const queryKey = pollId ? (["poll", pollId] as const) : (["live-poll"] as const);
   const query = useQuery({
-    queryKey: ["live-poll"],
-    queryFn: () => fetchLivePoll(),
+    queryKey,
+    queryFn: () =>
+      pollId ? fetchPollById({ data: { pollId } }) : fetchLivePoll(),
     initialData,
     refetchInterval: 1200,
   });
 
-  const poll = query.data;
   const vote = useMutation({
-    mutationFn: (optionId: string) => castVote({ data: { optionId } }),
+    mutationFn: (optionId: string) =>
+      castVote({ data: { optionId, pollId } }),
     onMutate: async (optionId) => {
-      await queryClient.cancelQueries({ queryKey: ["live-poll"] });
-      const prev = queryClient.getQueryData<LivePoll>(["live-poll"]);
+      await queryClient.cancelQueries({ queryKey });
+      const prev = queryClient.getQueryData<LivePoll>(queryKey);
       if (prev && !prev.votedId) {
-        queryClient.setQueryData<LivePoll>(["live-poll"], {
+        queryClient.setQueryData<LivePoll>(queryKey, {
           ...prev,
           votedId: optionId,
           total: prev.total + 1,
@@ -32,14 +45,26 @@ export function LivePollView({ initialData }: { initialData?: LivePoll }) {
       return { prev };
     },
     onError: (_err, _id, ctx) => {
-      if (ctx?.prev) queryClient.setQueryData(["live-poll"], ctx.prev);
+      if (ctx?.prev) queryClient.setQueryData(queryKey, ctx.prev);
     },
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: ["live-poll"] });
+      void queryClient.invalidateQueries({ queryKey });
     },
   });
 
-  if (query.isError) {
+  return { poll: query.data, isError: query.isError, vote };
+}
+
+export function LivePollView({
+  initialData,
+  pollId,
+}: {
+  initialData?: LivePoll;
+  pollId?: string;
+}) {
+  const { poll, isError, vote } = useLivePoll(pollId, initialData);
+
+  if (isError) {
     return (
       <p className="text-sm text-muted">
         暂时读不到现场投票。

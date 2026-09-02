@@ -6,6 +6,7 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "首页" },
   { to: "/vote", label: "现场" },
+  { to: "/polls", label: "列表" },
   { to: "/new", label: "发起" },
 ] as const;
 

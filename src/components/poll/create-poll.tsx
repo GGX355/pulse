@@ -28,7 +28,8 @@ export function CreatePollForm() {
       }),
     onSuccess: (poll: LivePoll) => {
       queryClient.setQueryData(["live-poll"], poll);
-      void navigate({ to: "/" });
+      queryClient.setQueryData(["poll", poll.id], poll);
+      void navigate({ to: "/poll/$pollId", params: { pollId: poll.id } });
     },
   });
 
