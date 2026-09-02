@@ -1,11 +1,12 @@
 import { describe, it } from "node:test";
 import assert from "node:assert/strict";
-import { readFile } from "node:fs/promises";
+import { readdir, readFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import {
   castVote,
+  closePoll,
   createPoll,
   listPolls,
   readPoll,
@@ -16,16 +17,21 @@ import {
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
 /**
- * Fresh in-memory Postgres with `migrations/0002_polls.sql` applied — the same
- * schema source the app runs on, so the tests exercise real constraints
- * (`unique (poll_id, voter_key)` included), not mocks.
+ * Fresh in-memory Postgres with every `migrations/*.sql` applied, in name
+ * order — the same schema source the app runs on, so the tests exercise real
+ * constraints (`unique (poll_id, voter_key)` included), not mocks. Adding a
+ * migration file updates the fixture automatically.
  */
 async function makeSql(): Promise<Sql> {
   const pg = new PGlite();
   await pg.waitReady;
-  await pg.exec(
-    await readFile(join(root, "migrations", "0002_polls.sql"), "utf8"),
-  );
+  const migrationsDir = join(root, "migrations");
+  const files = (await readdir(migrationsDir))
+    .filter((name) => name.endsWith(".sql"))
+    .sort();
+  for (const name of files) {
+    await pg.exec(await readFile(join(migrationsDir, name), "utf8"));
+  }
   const run = async (text: string, params: unknown[] = []) =>
     (await pg.query(text, params)).rows;
   return { query: run } as unknown as Sql;
@@ -185,5 +191,57 @@ describe("poll-repo(内存 PGlite 集成)", () => {
     const after = await readPoll(sql, "user-42");
     assert.equal(after?.total, 2);
     assert.equal(after?.votedId, bento.id);
+  });
+
+  it("createPoll 记录发起人,播种的旧数据 creatorId 为 null", async () => {
+    const sql = await makeSql();
+    await seedIfEmpty(sql);
+    const seed = await readPoll(sql, "k1");
+    assert.ok(seed);
+    assert.equal(seed.creatorId, null);
+
+    const id = await createPoll(sql, "团建去哪？", ["密室逃脱", "烧烤"], "user-42");
+    const poll = await readPoll(sql, "k1", id);
+    assert.ok(poll);
+    assert.equal(poll.creatorId, "user-42");
+    assert.equal(poll.closed, false);
+  });
+
+  it("closePoll:只有发起人能结束;结束后的投票不能再投、不能重复结束", async () => {
+    const sql = await makeSql();
+    await seedIfEmpty(sql);
+    const id = await createPoll(sql, "会议定哪天？", ["周一", "周二"], "user-42");
+    const poll = await readPoll(sql, "k1", id);
+    assert.ok(poll);
+
+    await assert.rejects(
+      () => closePoll(sql, id, "user-other"),
+      /只有发起人能结束投票/,
+    );
+
+    await closePoll(sql, id, "user-42");
+    const closed = await readPoll(sql, "k1", id);
+    assert.ok(closed?.closed);
+
+    await assert.rejects(
+      () => castVote(sql, "k2", poll.options[0].id, id),
+      /投票已结束/,
+    );
+
+    await assert.rejects(
+      () => closePoll(sql, id, "user-42"),
+      /投票已经结束了/,
+    );
+  });
+
+  it("listPolls 带上 closed 状态", async () => {
+    const sql = await makeSql();
+    await seedIfEmpty(sql);
+    const id = await createPoll(sql, "新投票", ["甲", "乙"], "user-42");
+    await closePoll(sql, id, "user-42");
+
+    const list = await listPolls(sql);
+    assert.equal(list[0].closed, true);
+    assert.equal(list[1].closed, false);
   });
 });

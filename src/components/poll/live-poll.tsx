@@ -88,7 +88,11 @@ export function LivePollView({
         </h1>
         <p className="mt-2 text-sm tabular-nums text-muted">
           共 {poll.total} 票
-          {poll.votedId ? " · 已投票。这是你的一票。" : " · 每人一票"}
+          {poll.closed
+            ? " · 已结束,感谢参与"
+            : poll.votedId
+              ? " · 已投票。这是你的一票。"
+              : " · 每人一票"}
         </p>
       </div>
 
@@ -100,7 +104,7 @@ export function LivePollView({
             pollId={poll.id}
             total={poll.total}
             votedId={poll.votedId}
-            disabled={vote.isPending}
+            disabled={vote.isPending || poll.closed}
             onVote={(id) => vote.mutate(id)}
           />
         ))}

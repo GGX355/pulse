@@ -1,5 +1,7 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import type { ReactNode } from "react";
+import { signOut } from "@/lib/auth/client";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
@@ -20,6 +22,7 @@ export function SiteShell({
   wide?: boolean;
 }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
+  const { user, isPending } = useCurrentUserState();
 
   return (
     <div className="flex min-h-dvh flex-col bg-bg text-foreground">
@@ -62,6 +65,26 @@ export function SiteShell({
                 <span className="size-1.5 rounded-full bg-accent" />
                 LIVE
               </Badge>
+            ) : null}
+            {!isPending ? (
+              user ? (
+                <button
+                  type="button"
+                  className="rounded-md px-2 py-2 text-sm text-muted touch-manipulation hover:text-foreground"
+                  onClick={() => {
+                    void signOut().catch(() => undefined);
+                  }}
+                >
+                  退出
+                </button>
+              ) : (
+                <Link
+                  to="/login"
+                  className="rounded-md px-2 py-2 text-sm text-muted touch-manipulation hover:text-foreground"
+                >
+                  登录
+                </Link>
+              )
             ) : null}
           </nav>
         </div>

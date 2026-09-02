@@ -2,6 +2,8 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
 import { createLivePoll, type LivePoll } from "@/lib/poll-api";
+import { RedirectToSignIn } from "@/lib/auth/gates";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -15,6 +17,7 @@ const TEMPLATES = [
 export function CreatePollForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const { user, isPending } = useCurrentUserState();
   const [question, setQuestion] = useState("午饭吃什么？");
   const [options, setOptions] = useState(["拉面", "便当", "沙拉", ""]);
 
@@ -35,6 +38,14 @@ export function CreatePollForm() {
 
   function setOption(index: number, value: string) {
     setOptions((prev) => prev.map((row, i) => (i === index ? value : row)));
+  }
+
+  // 发起/结束是管理动作,要登录;投票的人不受影响(见 README 的产品约定)。
+  if (isPending) {
+    return <p className="text-sm text-muted">正在确认登录状态…</p>;
+  }
+  if (!user) {
+    return <RedirectToSignIn />;
   }
 
   const filled = options.map((o) => o.trim()).filter(Boolean);

@@ -1,8 +1,10 @@
 import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
+import { authMiddleware } from "@/lib/auth/middleware";
 import {
   castVote as castRepoVote,
+  closePoll as closeRepoPoll,
   createPoll,
   listPolls,
   readPoll,
@@ -63,20 +65,29 @@ export const fetchPollList = createServerFn({ method: "GET" }).handler(
 );
 
 export const createLivePoll = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
   .validator(
     z.object({
       question: z.string().trim().min(1).max(80),
       options: z.array(z.string().trim().min(1).max(40)).min(2).max(8),
     }),
   )
-  .handler(async ({ data }): Promise<LivePoll> => {
+  .handler(async ({ data, context }): Promise<LivePoll> => {
     const sql = await getDb();
     const key = voterKey();
     const labels = data.options.map((label) => label.trim()).filter(Boolean);
-    await createPoll(sql, data.question.trim(), labels);
+    await createPoll(sql, data.question.trim(), labels, context.userId);
     const poll = await readPoll(sql, key);
     if (!poll) throw new Error("创建失败");
     return poll;
+  });
+
+export const closeLivePoll = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ pollId: z.string().min(1) }))
+  .handler(async ({ data, context }): Promise<void> => {
+    const sql = await getDb();
+    await closeRepoPoll(sql, data.pollId, context.userId);
   });
 
 export const castVote = createServerFn({ method: "POST" })

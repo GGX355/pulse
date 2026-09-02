@@ -15,6 +15,10 @@ export type LivePoll = {
   options: PollOption[];
   total: number;
   votedId: string | null;
+  /** Better Auth user id of the creator — null for pre-sign-in polls. */
+  creatorId: string | null;
+  /** True once the creator has closed the poll; votes are rejected after. */
+  closed: boolean;
 };
 
 export type Sql = {
@@ -32,6 +36,7 @@ export type PollSummary = {
   id: string;
   question: string;
   total: number;
+  closed: boolean;
   /** Epoch milliseconds — int8 comes back as number via the db type parsers. */
   createdAtMs: number;
 };
@@ -46,12 +51,24 @@ export async function readPoll(
   pollId?: string,
 ): Promise<LivePoll | null> {
   const polls = pollId
-    ? await sql.query<{ id: string; question: string }>(
-        `select id, question from polls where id = $1 limit 1`,
+    ? await sql.query<{
+        id: string;
+        question: string;
+        creator_id: string | null;
+        closed: boolean;
+      }>(
+        `select id, question, creator_id, (closed_at is not null) as closed
+         from polls where id = $1 limit 1`,
         [pollId],
       )
-    : await sql.query<{ id: string; question: string }>(
-        `select id, question from polls order by created_at desc limit 1`,
+    : await sql.query<{
+        id: string;
+        question: string;
+        creator_id: string | null;
+        closed: boolean;
+      }>(
+        `select id, question, creator_id, (closed_at is not null) as closed
+         from polls order by created_at desc limit 1`,
       );
   const poll = polls[0];
   if (!poll) return null;
@@ -87,6 +104,8 @@ export async function readPoll(
     })),
     total,
     votedId: mine[0]?.option_id ?? null,
+    creatorId: poll.creator_id,
+    closed: Boolean(poll.closed),
   };
 }
 
@@ -114,12 +133,13 @@ export async function createPoll(
   sql: Sql,
   question: string,
   labels: string[],
+  creatorId?: string | null,
 ): Promise<string> {
   const id = crypto.randomUUID();
-  await sql.query(`insert into polls (id, question) values ($1, $2)`, [
-    id,
-    question,
-  ]);
+  await sql.query(
+    `insert into polls (id, question, creator_id) values ($1, $2, $3)`,
+    [id, question, creatorId ?? null],
+  );
   for (let i = 0; i < labels.length; i += 1) {
     await sql.query(
       `insert into poll_options (id, poll_id, label, sort_order) values ($1, $2, $3, $4)`,
@@ -135,15 +155,17 @@ export async function listPolls(sql: Sql, limit = 50): Promise<PollSummary[]> {
     id: string;
     question: string;
     total: number;
+    closed: boolean;
     created_ms: number;
   }>(
     `select p.id, p.question,
             count(v.id)::int as total,
+            (p.closed_at is not null) as closed,
             (extract(epoch from p.created_at) * 1000)::bigint as created_ms
      from polls p
      left join poll_options o on o.poll_id = p.id
      left join poll_votes v on v.option_id = o.id
-     group by p.id, p.question, p.created_at
+     group by p.id, p.question, p.created_at, p.closed_at
      order by p.created_at desc
      limit $1`,
     [limit],
@@ -152,6 +174,7 @@ export async function listPolls(sql: Sql, limit = 50): Promise<PollSummary[]> {
     id: row.id,
     question: row.question,
     total: Number(row.total),
+    closed: Boolean(row.closed),
     createdAtMs: Number(row.created_ms),
   }));
 }
@@ -170,6 +193,7 @@ export async function castVote(
 ): Promise<LivePoll> {
   const live = await readPoll(sql, key, pollId);
   if (!live) throw new Error("没有进行中的投票");
+  if (live.closed) throw new Error("投票已结束");
   if (live.votedId) return live;
 
   const option = live.options.find((row) => row.id === optionId);
@@ -185,4 +209,33 @@ export async function castVote(
   const next = await readPoll(sql, key, live.id);
   if (!next) throw new Error("投票失败");
   return next;
+}
+
+/**
+ * Close a poll as its creator. Reads-then-writes so the error messages are
+ * exact; only the creator's own id (checked server-side via authMiddleware)
+ * may close, and a closed poll stays closed.
+ */
+export async function closePoll(
+  sql: Sql,
+  pollId: string,
+  userId: string,
+): Promise<void> {
+  const rows = await sql.query<{
+    creator_id: string | null;
+    closed: boolean;
+  }>(
+    `select creator_id, (closed_at is not null) as closed
+     from polls where id = $1 limit 1`,
+    [pollId],
+  );
+  const poll = rows[0];
+  if (!poll) throw new Error("没有这个投票");
+  if (poll.creator_id !== userId) throw new Error("只有发起人能结束投票");
+  if (poll.closed) throw new Error("投票已经结束了");
+
+  await sql.query(
+    `update polls set closed_at = now() where id = $1 and closed_at is null`,
+    [pollId],
+  );
 }
