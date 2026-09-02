@@ -88,6 +88,32 @@ export function projectRoot() {
 }
 
 /**
+ * Resolve a bare package command ("vite") to its JS entry under node_modules.
+ *
+ * npm's `.bin` shims are POSIX shell scripts plus `.cmd` files: a plain
+ * `spawn("vite")` can execute neither on Windows and fails with ENOENT.
+ * Launching the package's own `bin` entry with this node process sidesteps
+ * the shim entirely. Returns null when the command is not a local package bin.
+ */
+export function resolveLocalBinJs(command) {
+  try {
+    const manifest = JSON.parse(
+      readFileSync(
+        join(projectRoot(), "node_modules", command, "package.json"),
+        "utf8",
+      ),
+    );
+    const bin =
+      typeof manifest.bin === "string"
+        ? manifest.bin
+        : manifest.bin?.[command];
+    return bin ? join(projectRoot(), "node_modules", command, bin) : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
  * Whether `moduleUrl` is the script node was asked to run.
  *
  * Both sides are resolved through symlinks: node realpaths `import.meta.url`
@@ -111,7 +137,13 @@ function main(argv) {
     process.exit(2);
   }
   const env = mergeAppEnv(readAppEnv(projectRoot()), process.env);
-  const child = spawn(command, args, { stdio: "inherit", env });
+  // On Windows a bare spawn cannot execute npm's .bin shims — run the package's
+  // JS bin with this node instead. Other platforms keep the PATH lookup.
+  const binJs =
+    process.platform === "win32" ? resolveLocalBinJs(command) : null;
+  const child = binJs
+    ? spawn(process.execPath, [binJs, ...args], { stdio: "inherit", env })
+    : spawn(command, args, { stdio: "inherit", env });
   // The dev server is long-running and is stopped by signalling this wrapper.
   for (const signal of ["SIGINT", "SIGTERM", "SIGHUP"]) {
     process.on(signal, () => child.kill(signal));
