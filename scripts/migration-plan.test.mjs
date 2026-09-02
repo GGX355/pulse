@@ -58,7 +58,14 @@ test("non-.sql entries are dropped (readdir also yields the auth/ directory)", (
 
 test("the auth schema ships outside the globbed directory", () => {
   const migrationsDir = join(projectRoot(), "migrations");
-  assert.deepEqual(pendingMigrations(readdirSync(migrationsDir), []), []);
+  // The template shipped zero app migrations, so this used to assert `[]`;
+  // Pulse has real migrations now. The invariant is only that the opt-in
+  // auth/ subdirectory never enters the pending list.
+  const pending = pendingMigrations(readdirSync(migrationsDir), []);
+  assert.ok(
+    pending.every((m) => m.path !== "auth"),
+    "auth/ must stay outside the applied migration list",
+  );
   assert.ok(readdirSync(join(migrationsDir, "auth")).includes("0001_auth.sql"));
 });
 
