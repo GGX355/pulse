@@ -99,7 +99,7 @@ function ClosePollButton({ pollId }: { pollId: string }) {
         {close.isPending ? "结束中" : "结束"}
       </Button>
       {close.isError ? (
-        <p className="mt-2 text-sm text-muted">没结束成,再试一次。</p>
+        <p className="mt-2 text-sm text-muted">操作失败，请重试。</p>
       ) : null}
     </div>
   );
