@@ -92,17 +92,17 @@ export function DrawView({
   const myLabel = draw.myDraw?.label ?? null;
 
   const status = draw.closed
-    ? "已结束 · 结果已公开"
+    ? "已结束"
     : draw.allTaken
-      ? "已经抽完了"
+      ? "名额已抽完"
       : draw.blind
-        ? "盲选中 · 抽之前看不到任何人数和结果"
-        : `共 ${draw.totalTaken} 人已抽`;
+        ? "进行中 · 结果参与后可见"
+        : `${draw.totalTaken} 人已参与`;
 
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <p className="text-xs font-medium tracking-wide text-muted">现场抽签</p>
+        <p className="text-xs font-medium tracking-wide text-muted">抽签</p>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
           {draw.title}
           {draw.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
@@ -124,7 +124,7 @@ export function DrawView({
           </div>
         ) : draw.closed || draw.allTaken ? (
           <p className="text-sm text-muted">
-            {draw.allTaken ? "签已经全部抽完了。" : "这场抽签已经结束。"}
+            {draw.allTaken ? "名额已抽完" : "抽签已结束"}
           </p>
         ) : (
           <>
@@ -138,7 +138,7 @@ export function DrawView({
                   onChange={(e) => setNote(e.target.value)}
                 />
                 <p className="text-center text-xs text-subtle">
-                  抽之前要先写{initialData.voterNoteLabel},会跟结果一起记名。
+                  抽签前需填写{initialData.voterNoteLabel}
                 </p>
               </div>
             ) : null}
@@ -154,16 +154,14 @@ export function DrawView({
             >
               {drawMut.isPending ? "抽取中…" : "抽一次"}
             </Button>
-            <p className="text-xs text-muted">
-              每人一次 · 点下之前,谁抽到了什么一律保密
-            </p>
+            <p className="text-xs text-muted">每人限抽一次</p>
           </>
         )}
         {drawMut.isError ? (
           <p className="form-error text-sm text-muted">
             {drawMut.error instanceof Error && drawMut.error.message
               ? drawMut.error.message
-              : "没抽成,再试一次。"}
+              : "抽取失败，请重试"}
           </p>
         ) : null}
       </div>
@@ -182,15 +180,13 @@ export function DrawView({
               <span className="block truncate font-medium text-foreground">
                 {slot.label}
               </span>
-              <span className="mt-0.5 block text-xs text-subtle">盲选 · 结果保密</span>
+              <span className="mt-0.5 block text-xs text-subtle">待揭晓</span>
             </div>
           ))}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          <p className="text-xs font-medium tracking-wide text-muted">
-            各签位情况 · 共 {draw.totalTaken} 人已抽
-          </p>
+          <p className="text-xs font-medium tracking-wide text-muted">抽取结果</p>
           {draw.slots.map((slot) => {
             const fill =
               slot.count === -1 ? 0 : slot.count > 0 ? slot.taken / slot.count : 0;
@@ -207,16 +203,14 @@ export function DrawView({
                       {slot.label}
                       {isMine ? (
                         <span className="poll-picked ml-2 text-xs text-accent">
-                          你的签
+                          我的签
                         </span>
                       ) : null}
                     </span>
                   </span>
                   <span className="shrink-0 text-right tabular-nums text-sm text-muted">
                     <span className="block text-foreground">
-                      {slot.count === -1
-                        ? `不限量 · 已 ${slot.taken}`
-                        : `已 ${slot.taken}/${slot.count}`}
+                      {slot.count === -1 ? `${slot.taken}+` : `${slot.taken}/${slot.count}`}
                     </span>
                   </span>
                 </span>
@@ -279,12 +273,12 @@ function DrawAdminPanel({
   return (
     <details className="mt-2 rounded-xl border border-border bg-surface p-4" open>
       <summary className="cursor-pointer text-xs font-medium tracking-wide text-muted">
-        后台数据(仅你可见 · 实时刷新)
+        实时数据（仅发起人可见）
       </summary>
 
       <div className="mt-4 flex flex-wrap items-center gap-2 text-xs">
         <span className="rounded-full border border-border px-2.5 py-1 tabular-nums text-muted">
-          已抽 {data.totalTaken} 人
+          {data.totalTaken} 人已参与
         </span>
         {data.closed ? (
           <span className="rounded-full border border-border px-2.5 py-1 text-subtle">
@@ -292,12 +286,12 @@ function DrawAdminPanel({
           </span>
         ) : data.allTaken ? (
           <span className="rounded-full border border-border px-2.5 py-1 text-subtle">
-            全部抽完
+            名额已抽完
           </span>
         ) : (
           <span className="rounded-full border border-accent/30 px-2.5 py-1 text-accent">
             <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-            抽签进行中
+            进行中
           </span>
         )}
         <button
@@ -305,7 +299,7 @@ function DrawAdminPanel({
           onClick={exportClaims}
           className="ml-auto rounded-full border border-border px-3 py-1 text-muted transition-colors hover:text-foreground"
         >
-          {copied ? "已复制 ✓" : "复制名单"}
+          {copied ? "已复制" : "导出名单"}
         </button>
       </div>
 
@@ -325,7 +319,7 @@ function DrawAdminPanel({
                 </span>
                 <span className="shrink-0 tabular-nums text-muted">
                   {slot.count === -1
-                    ? `不限量 · 已 ${slot.taken}`
+                    ? `${slot.taken}+`
                     : `${slot.taken}/${slot.count}${slot.remaining !== null && slot.remaining <= 0 ? " · 满" : ""}`}
                 </span>
               </span>
@@ -359,9 +353,7 @@ function DrawAdminPanel({
           ))}
         </div>
       ) : (
-        <p className="mt-3 text-xs text-subtle">
-          还没人抽。名单会在这里按时间实时滚动。
-        </p>
+        <p className="mt-3 text-xs text-subtle">暂无参与记录</p>
       )}
     </details>
   );

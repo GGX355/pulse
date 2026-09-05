@@ -42,12 +42,12 @@ export function SharePoll() {
 
   return (
     <section className="mt-10 animate-in rounded-xl border border-border bg-surface p-4 fill-mode-both fade-in slide-in-from-bottom-3 duration-500">
-      <p className="text-xs font-medium tracking-wide text-muted">发给别人</p>
+      <p className="text-xs font-medium tracking-wide text-muted">分享</p>
       <div className="mt-3 flex items-center gap-4">
         {qr ? (
           <img
             src={qr}
-            alt="投票链接二维码"
+            alt="二维码"
             width={96}
             height={96}
             className="size-24 animate-in rounded-lg bg-white p-1 fade-in duration-500"
@@ -56,11 +56,9 @@ export function SharePoll() {
           <div className="size-24 animate-pulse rounded-lg bg-surface-2" />
         )}
         <div className="flex min-w-0 flex-col gap-2">
-          <p className="text-sm text-muted">
-            扫这个码就能投，也可以把链接丢群里。
-          </p>
+          <p className="text-sm text-muted">扫码参与，或复制链接分享。</p>
           <Button variant="outline" size="sm" className="self-start" onClick={copyLink}>
-            {copied ? "已复制 ✓" : "复制链接"}
+            {copied ? "已复制" : "复制链接"}
           </Button>
         </div>
       </div>

@@ -71,10 +71,10 @@ export function PollsAdminList() {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-display text-lg font-semibold tracking-tight">
-        我发过的投票
+        投票记录
       </h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">还没有投票。</p>
+        <p className="text-sm text-muted">暂无投票。</p>
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-md border border-border px-3">
           {rows.map((poll) => (
@@ -110,10 +110,10 @@ export function DrawsAdminList() {
   return (
     <section className="flex flex-col gap-2">
       <h2 className="font-display text-lg font-semibold tracking-tight">
-        我发过的抽签
+        抽签记录
       </h2>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">还没有抽签。</p>
+        <p className="text-sm text-muted">暂无抽签。</p>
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-md border border-border px-3">
           {rows.map((draw) => (

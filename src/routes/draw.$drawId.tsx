@@ -23,9 +23,9 @@ function DrawDetailPage() {
   if (initialData === null) {
     return (
       <p className="text-sm text-muted">
-        没有找到这场抽签(可能已被删除)。
+        抽签不存在或已被删除。
         <Link to="/draw" className="ml-2 text-foreground underline">
-          看看全部抽签
+          返回抽签
         </Link>
       </p>
     );
@@ -69,7 +69,7 @@ function CloseDrawButton({ drawId }: { drawId: string }) {
         variant="outline"
         disabled={close.isPending}
         onClick={() => {
-          if (window.confirm("结束这场抽签?结束后大家不能再抽,结果全量公开。")) {
+          if (window.confirm("结束后将不可再参与，结果对所有人公开。确定结束？")) {
             close.mutate();
           }
         }}
@@ -77,7 +77,7 @@ function CloseDrawButton({ drawId }: { drawId: string }) {
         {close.isPending ? "结束中" : "结束抽签"}
       </Button>
       {close.isError ? (
-        <p className="mt-2 text-sm text-muted">没结束成,再试一次。</p>
+        <p className="mt-2 text-sm text-muted">操作失败，请重试。</p>
       ) : null}
     </div>
   );

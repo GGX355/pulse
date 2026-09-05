@@ -72,22 +72,20 @@ function Home() {
     <>
       {hasNew ? (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-surface p-4">
-          <p className="text-sm text-muted">主持人发布了新内容。</p>
+          <p className="text-sm text-muted">有新内容发布</p>
           <button
             type="button"
             onClick={() => setHoldId(null)}
             className="shrink-0 rounded-full border border-accent/40 px-4 py-2 text-sm text-accent touch-manipulation"
           >
-            立即查看
+            查看
           </button>
         </div>
       ) : null}
 
       {active.kind === "poll" ? (
         <>
-          <p className="text-xs font-medium tracking-wide text-muted">
-            现场投票 · 最新发布
-          </p>
+          <p className="text-xs font-medium tracking-wide text-muted">最新投票</p>
           <div className="mt-4" key={`poll-${contentId(active)}`}>
             {/* 必须钉住这条投票自己的 id:不带 id 时内层会去轮"最新进行中投票",
                 主页一旦保持旧内容,画面就会被内层偷偷换成新的。 */}
@@ -97,24 +95,22 @@ function Home() {
             />
           </div>
           <p className="mt-10 text-sm text-muted">
-            想抽签选人?
+            抽签选人请前往
             <Link to="/draw" className="ml-2 text-foreground underline">
-              去抽签区
+              抽签
             </Link>
           </p>
         </>
       ) : (
         <>
-          <p className="text-xs font-medium tracking-wide text-muted">
-            现场抽签 · 最新发布
-          </p>
+          <p className="text-xs font-medium tracking-wide text-muted">最新抽签</p>
           <div className="mt-4" key={`draw-${contentId(active)}`}>
             <DrawView initialData={active.draw} pollId={contentId(active)} />
           </div>
           <p className="mt-10 text-sm text-muted">
-            想投票?
+            历史投票见
             <Link to="/polls" className="ml-2 text-foreground underline">
-              去投票记录
+              投票记录
             </Link>
           </p>
         </>

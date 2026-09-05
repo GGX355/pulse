@@ -71,12 +71,12 @@ function AuthForm({ onDone }: { onDone: () => void }) {
               password,
             });
       if (result.error) {
-        setError(result.error.message ?? "没有成功,请再试一次。");
+        setError(result.error.message ?? "操作失败，请重试。");
         return;
       }
       onDone();
     } catch {
-      setError("没有成功,请再试一次。");
+      setError("操作失败，请重试。");
     } finally {
       setPending(false);
     }
@@ -89,10 +89,10 @@ function AuthForm({ onDone }: { onDone: () => void }) {
           {mode === "signin" ? "登录" : "注册"}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          投票不用登录。创建和结束投票需要登录。
+          参与无需登录，创建与管理需登录。
           {adminLockEnabled()
-            ? " 只有指定邮箱能登录。"
-            : " 现在谁都能注册。"}
+            ? " 仅指定邮箱可登录。"
+            : " 开放注册。"}
         </p>
       </div>
 
@@ -137,7 +137,7 @@ function AuthForm({ onDone }: { onDone: () => void }) {
             value={name}
             maxLength={40}
             onChange={(e) => setName(e.target.value)}
-            placeholder="怎么称呼你"
+            placeholder="选填"
           />
         </div>
       ) : null}

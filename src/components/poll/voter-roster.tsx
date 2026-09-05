@@ -39,11 +39,11 @@ export function VoterRoster() {
       <div>
         <h2 className="font-display text-lg font-semibold tracking-tight">参与者</h2>
         <p className="mt-1 text-xs text-muted">
-          按浏览器 Cookie 记的人:投票/抽签时写过名字就会归到这里,只有后台能看见。
+          按浏览器标识记名，仅后台可见。
         </p>
       </div>
       {rows.length === 0 ? (
-        <p className="text-sm text-muted">还没人写过名字。</p>
+        <p className="text-sm text-muted">暂无参与者。</p>
       ) : (
         <ul className="divide-y divide-border rounded-md border border-border">
           {rows.map((row, index) => (

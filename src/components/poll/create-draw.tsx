@@ -78,7 +78,7 @@ export function CreateDrawForm() {
     onSuccess: (draw) => {
       void navigate({ to: "/draw/$drawId", params: { drawId: draw.id } });
     },
-    onError: () => setError("没发出去,请再试一次。"),
+    onError: () => setError("发布失败，请重试。"),
   });
 
   // 发起是管理动作,要登录;抽签的人不需要登录。
@@ -101,13 +101,13 @@ export function CreateDrawForm() {
     >
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          发起抽签
+          新建抽签
         </h1>
         <p className="mt-2 text-sm text-muted">
-          每个签位设一个数量,每人抽一次,抽完即止。抽签的人不需要登录。
+          设置各签位数量，每人限抽一次，抽完即止。参与者无需登录。
         </p>
         <p className="mt-1 text-xs text-subtle">
-          盲选模式:参与者抽之前看不到任何人数和结果;你在抽签详情页有实时后台。
+          盲选模式：参与者抽签前不可见任何数据，详情页提供实时统计。
         </p>
       </div>
 
@@ -118,9 +118,7 @@ export function CreateDrawForm() {
             type="button"
             className="h-9 rounded-full border border-border px-3 text-sm text-muted touch-manipulation hover:text-foreground"
             onClick={() => {
-              setTitle(
-                tpl.name === "团建抽奖" ? "团建抽奖！" : tpl.name + "看看谁值",
-              );
+              setTitle(tpl.name);
               setSlots(tpl.slots.map((slot) => ({ ...slot })));
               setBlankMode(tpl.blankMode);
               setBlankLabel(tpl.blankLabel);
@@ -144,7 +142,7 @@ export function CreateDrawForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Label>签位与数量</Label>
+        <Label>签位</Label>
         {slots.map((slot, index) => (
           <div key={index} className="flex items-center gap-2">
             <Input
@@ -189,13 +187,13 @@ export function CreateDrawForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Label>没抽中的人</Label>
+        <Label>未中兜底</Label>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              ["count", "设数量"],
+              ["count", "固定数量"],
               ["unlimited", "不限量"],
-              ["none", "不设未中"],
+              ["none", "不设置"],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -218,7 +216,7 @@ export function CreateDrawForm() {
             <Input
               value={blankLabel}
               maxLength={10}
-              placeholder="未中文案,如「谢谢参与」"
+              placeholder="如：谢谢参与"
               onChange={(e) => setBlankLabel(e.target.value)}
               className="flex-1"
             />
@@ -238,12 +236,12 @@ export function CreateDrawForm() {
       </div>
 
       <div className="flex flex-col gap-3">
-        <Label>抽之前要填写吗</Label>
+        <Label>参与登记</Label>
         <div className="flex flex-wrap gap-2">
           {(
             [
-              [false, "不用填"],
-              [true, "要填写"],
+              [false, "不需要"],
+              [true, "需要填写"],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -266,8 +264,8 @@ export function CreateDrawForm() {
             <Input
               value={noteLabel}
               maxLength={20}
-              placeholder="提示文案,如「名字」"
-              aria-label="填写提示"
+              placeholder="如：姓名"
+              aria-label="登记项名称"
               onChange={(e) => setNoteLabel(e.target.value)}
               className="flex-1"
             />
@@ -275,7 +273,7 @@ export function CreateDrawForm() {
         ) : null}
         {askName ? (
           <p className="text-xs text-subtle">
-            每个人抽之前要先填这一项(一般写名字),名单里就能对上人。
+            参与者抽签前需填写该项，用于名单核对。
           </p>
         ) : null}
       </div>
@@ -297,7 +295,7 @@ export function CreateDrawForm() {
             发布中…
           </>
         ) : (
-          "发布抽签"
+          "发布"
         )}
       </Button>
     </form>

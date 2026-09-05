@@ -82,9 +82,9 @@ export function CreatePollForm() {
     >
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          创建投票
+          新建投票
         </h1>
-        <p className="mt-2 text-sm text-muted">创建后会出现在投票页。</p>
+        <p className="mt-2 text-sm text-muted">发布后显示在投票页。</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -116,12 +116,12 @@ export function CreatePollForm() {
           value={question}
           maxLength={80}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="问什么"
+          placeholder="输入问题"
         />
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>要先写点什么吗</Label>
+        <Label>参与登记</Label>
         <div className="flex flex-wrap gap-2">
           <button
             type="button"
@@ -133,7 +133,7 @@ export function CreatePollForm() {
             }
             onClick={() => setAskNote(false)}
           >
-            不用填
+            不需要
           </button>
           <button
             type="button"
@@ -148,7 +148,7 @@ export function CreatePollForm() {
               if (!noteLabel.trim()) setNoteLabel("名字");
             }}
           >
-            要填写
+            需要填写
           </button>
         </div>
         {askNote ? (
@@ -174,18 +174,18 @@ export function CreatePollForm() {
             />
           </>
         ) : (
-          <p className="text-xs text-muted">直接选就行。</p>
+          <p className="text-xs text-muted">参与者直接选择即可。</p>
         )}
       </div>
 
       <div className="flex flex-col gap-2">
-        <Label>最多投几项</Label>
+        <Label>可选项数</Label>
         <div className="flex flex-wrap gap-2">
           {(
             [
               ["single", "单选"],
-              ["limited", "最多几项"],
-              ["unlimited", "不限项"],
+              ["limited", "限项多选"],
+              ["unlimited", "不限项数"],
             ] as const
           ).map(([value, label]) => (
             <button
@@ -212,7 +212,7 @@ export function CreatePollForm() {
         </div>
         {choiceMode === "limited" ? (
           <>
-            <Label htmlFor="choice-limit">最多几项</Label>
+            <Label htmlFor="choice-limit">选项上限</Label>
             <Input
               id="choice-limit"
               type="number"
@@ -230,9 +230,9 @@ export function CreatePollForm() {
             </p>
           </>
         ) : choiceMode === "unlimited" ? (
-          <p className="text-xs text-muted">想选几项选几项。</p>
+          <p className="text-xs text-muted">不限数量。</p>
         ) : (
-          <p className="text-xs text-muted">点一下就算投了。</p>
+          <p className="text-xs text-muted">选择后立即生效。</p>
         )}
       </div>
 
@@ -267,7 +267,7 @@ export function CreatePollForm() {
             }
             onClick={() => setIncludeWriteIn((on) => !on)}
           >
-            {includeWriteIn ? "已加上「其他」" : "加上「其他」"}
+            {includeWriteIn ? "已添加「其他」" : "添加「其他」"}
           </button>
         </div>
         {includeWriteIn ? (
@@ -277,17 +277,17 @@ export function CreatePollForm() {
               value={writeInLabel}
               maxLength={40}
               onChange={(e) => setWriteInLabel(e.target.value)}
-              placeholder="这项叫什么，比如「其他」"
+              placeholder="选项名称，如：其他"
             />
             <p className="text-xs text-muted">
-              选这项的人自己填。多选的话可以跟上面的一起选。
+              选择此项后需自行填写内容。
             </p>
           </>
         ) : null}
       </div>
 
       {create.isError ? (
-        <p className="text-sm text-muted">没创建成功，再试一次。</p>
+        <p className="text-sm text-muted">创建失败，请重试。</p>
       ) : null}
 
       <Button

@@ -34,8 +34,8 @@ function NewPage() {
         />
         {(
           [
-            ["poll", "投票后台"],
-            ["draw", "抽签后台"],
+            ["poll", "投票"],
+            ["draw", "抽签"],
           ] as const
         ).map(([value, label]) => (
           <button

@@ -141,9 +141,9 @@ export function LivePollView({
   if (isError) {
     return (
       <p className="text-sm text-muted">
-        现在看不到投票。
+        暂时无法加载。
         <Link to="/polls" className="ml-2 text-foreground underline">
-          看全部
+          投票记录
         </Link>
       </p>
     );
@@ -186,7 +186,7 @@ export function LivePollView({
             onChange={(e) => setNote(e.target.value)}
           />
           {needsNote && !filledNote ? (
-            <p className="text-xs text-muted">先写这个，再选。</p>
+            <p className="text-xs text-muted">请先填写</p>
           ) : null}
         </div>
       ) : null}
@@ -234,7 +234,7 @@ export function LivePollView({
           {vote.isPending
             ? "提交中"
             : pickingWriteIn && !writeInText.trim()
-              ? "先写完"
+              ? "请先填写"
               : "确定"}
         </Button>
       ) : null}

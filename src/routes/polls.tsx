@@ -24,28 +24,20 @@ function PollsPage() {
       <div className="mb-8 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            全部投票
+            投票记录
           </h1>
-          <p className="mt-2 text-sm text-muted">
-            实时计票的投票在这里;抽签在
-            <Link to="/draw" className="ml-1 text-foreground underline">
-              抽签页
-            </Link>
-            。
-          </p>
+          <p className="mt-2 text-sm text-muted">抽签内容见抽签页。</p>
         </div>
         <Link
           to="/new"
           className="shrink-0 rounded-full border border-border px-4 py-2 text-sm text-muted touch-manipulation transition-colors hover:text-foreground"
         >
-          发起投票
+          新建投票
         </Link>
       </div>
 
       {polls.length === 0 ? (
-        <p className="text-sm text-muted">
-          还没有投票。
-        </p>
+        <p className="text-sm text-muted">暂无投票。</p>
       ) : (
         <div className="flex flex-col divide-y divide-border">
           {polls.map((poll, index) => (

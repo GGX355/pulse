@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "现场" },
+  { to: "/", label: "投票" },
   { to: "/draw", label: "抽签" },
 ] as const;
 
