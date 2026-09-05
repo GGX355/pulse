@@ -152,7 +152,7 @@ describe("draw-repo(内存 PGlite 集成)", () => {
     const draw = await readDrawById(sql, "k4", id);
     assert.ok(draw);
     assert.equal(draw.allTaken, false);
-    assert.equal(draw.totalTaken, 3);
+    assert.equal(draw.totalTaken, 5); // 预置的 2 张参与奖 + 3 次兜底抽取
     assert.equal(draw.slots.find((slot) => slot.label === "参与奖")?.taken, 2);
     await drawOne(sql, "k4", id); // 不限量,第 4 人照样能抽
   });
