@@ -24,9 +24,9 @@ function PollsPage() {
       <div className="mb-8 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            投票记录
+            投票历史
           </h1>
-          <p className="mt-2 text-sm text-muted">抽签内容见抽签页。</p>
+          <p className="mt-2 text-sm text-muted">进行中的在最上面，点击进入。</p>
         </div>
         <Link
           to="/new"

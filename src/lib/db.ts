@@ -107,11 +107,18 @@ function createNeonSql(): Promise<Sql> {
 
 async function createPgliteSql(): Promise<Sql> {
   // Embedded Postgres, imported on demand so it never loads on the Neon path.
-  // One in-memory instance per process, shared across HMR module instances, so
-  // data survives source edits (it resets on dev-server restart).
+  // One instance per process, shared across HMR module instances, and persisted
+  // to ./data/pglite so local dev data survives dev-server restarts (in-memory
+  // only on the Vercel preview path, where the runtime FS is read-only anyway;
+  // real deploys run on Neon with DATABASE_URL set).
   globalRef.__pgliteInstance__ ??= (async () => {
     const { PGlite } = await import("@electric-sql/pglite");
+    // PGlite 的 mkdir 非递归,父目录不存在会 ENOENT —— 先补齐(node:fs 动态
+    // 导入,避免进客户端包)。
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync("./data/pglite", { recursive: true });
     const pg = new PGlite({
+      dataDir: "./data/pglite",
       parsers: {
         [OID_INT8]: Number,
         [OID_DATE]: identity,

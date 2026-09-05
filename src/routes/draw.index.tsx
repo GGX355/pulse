@@ -23,7 +23,7 @@ function DrawsPage() {
       <div className="mb-8 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            抽签
+            抽签历史
           </h1>
           <p className="mt-2 text-sm text-muted">盲选模式，参与后可见结果。</p>
         </div>
@@ -86,7 +86,7 @@ function DrawsPage() {
       <p className="mt-10 text-sm text-muted">
         投票内容见
         <Link to="/polls" className="ml-2 text-foreground underline">
-          投票记录
+          投票历史
         </Link>
       </p>
     </>

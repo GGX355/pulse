@@ -107,8 +107,9 @@ export const fetchDrawListAdmin = createServerFn({ method: "POST" })
   });
 
 /**
- * 主页内容:两种内容里最新发布的那一个 —— 抽签或投票,谁新显示谁。
- * 空库时先播种示例投票,保证首页永远有东西。
+ * 主页内容:大家手里共用的那一个链接。优先取**进行中**的最新内容(投票或
+ * 抽签,谁新显示谁) —— 最新一条若已结束,不应盖住还在进行的那条;全部
+ * 结束时才回落到最新已结束的(供看结果)。空库先播种,保证首页永远有东西。
  */
 export const fetchHomeContent = createServerFn({ method: "GET" }).handler(
   async (): Promise<PollContent> => {
@@ -116,7 +117,9 @@ export const fetchHomeContent = createServerFn({ method: "GET" }).handler(
     const key = voterKey();
     const latest = async () =>
       sql.query<{ id: string; kind: string }>(
-        `select id, kind from polls order by created_at desc limit 1`,
+        `select id, kind from polls
+         order by (closed_at is null) desc, created_at desc
+         limit 1`,
       );
     let rows = await latest();
     if (!rows[0]) {

@@ -95,9 +95,9 @@ function Home() {
             />
           </div>
           <p className="mt-10 text-sm text-muted">
-            抽签选人请前往
-            <Link to="/draw" className="ml-2 text-foreground underline">
-              抽签
+            往期投票见
+            <Link to="/polls" className="ml-2 text-foreground underline">
+              投票历史
             </Link>
           </p>
         </>
@@ -108,9 +108,9 @@ function Home() {
             <DrawView initialData={active.draw} pollId={contentId(active)} />
           </div>
           <p className="mt-10 text-sm text-muted">
-            历史投票见
-            <Link to="/polls" className="ml-2 text-foreground underline">
-              投票记录
+            往期抽签见
+            <Link to="/draw" className="ml-2 text-foreground underline">
+              抽签历史
             </Link>
           </p>
         </>

@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 
 const NAV = [
-  { to: "/", label: "投票" },
+  { to: "/polls", label: "投票" },
   { to: "/draw", label: "抽签" },
 ] as const;
 
@@ -29,9 +29,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
           <nav className="flex min-w-0 items-center gap-0.5 sm:gap-1">
             {NAV.map((item) => {
               const active =
-                item.to === "/"
-                  ? pathname === "/" || pathname === "/vote"
-                  : pathname === item.to || pathname.startsWith(`${item.to}/`);
+                pathname === item.to || pathname.startsWith(`${item.to}/`);
               return (
                 <Link
                   key={item.to}
