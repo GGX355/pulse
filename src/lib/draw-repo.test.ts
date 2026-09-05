@@ -128,7 +128,7 @@ describe("draw-repo(内存 PGlite 集成)", () => {
     assert.equal(draw.slots.find((slot) => slot.label === "大奖")?.taken, 1);
   });
 
-  it("不限量未中永远不会抽完,有限签最多被抽 count 次", async () => {
+  it("不限量未中永远不会抽完,有限签永不超发", async () => {
     const sql = await makeSql();
     const id = await createDraw(sql, "user-42", {
       title: "人人有奖",
@@ -137,18 +137,24 @@ describe("draw-repo(内存 PGlite 集成)", () => {
       blankCount: null,
     });
 
-    for (const key of ["k1", "k2", "k3", "k4", "k5", "k6"]) {
+    // 有限签直接置满(等价于已被抽走)— 之后的每一次抽取都必须落到不限量兜底,
+    // 断言与随机分布无关,纯确定性。
+    await sql.query(
+      `update poll_options set taken = 2 where poll_id = $1 and label = '参与奖'`,
+      [id],
+    );
+
+    for (const key of ["k1", "k2", "k3"]) {
       const state = await drawOne(sql, key, id);
-      assert.ok(state.myDraw);
+      assert.equal(state.myDraw?.label, "谢谢参与");
     }
 
-    const draw = await readDrawById(sql, "k7", id);
+    const draw = await readDrawById(sql, "k4", id);
     assert.ok(draw);
     assert.equal(draw.allTaken, false);
-    assert.equal(draw.totalTaken, 6);
+    assert.equal(draw.totalTaken, 3);
     assert.equal(draw.slots.find((slot) => slot.label === "参与奖")?.taken, 2);
-    assert.ok(draw.slots.find((slot) => slot.label === "谢谢参与"));
-    await drawOne(sql, "k7", id); // 不限量,第 7 人照样能抽
+    await drawOne(sql, "k4", id); // 不限量,第 4 人照样能抽
   });
 
   it("已结束的抽签不能抽;发起人可提前结束(复用 closePoll)", async () => {
