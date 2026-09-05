@@ -6,9 +6,10 @@ export function getRouter() {
   return createRouter({
     routeTree,
     defaultErrorComponent: AppErrorComponent,
-    // Cross-fade routes through the browser's View Transitions API; the CSS
-    // in styles.css styles the old/new snapshots. Unsupported browsers just
-    // swap instantly.
-    defaultViewTransition: true,
+    defaultPendingComponent: PendingPage,
   });
+}
+
+function PendingPage() {
+  return <p className="text-sm text-muted">加载中</p>;
 }

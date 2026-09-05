@@ -7,13 +7,15 @@ import {
   closePoll as closeRepoPoll,
   createPoll,
   listPolls,
+  listVoterProfiles as listRepoVoterProfiles,
   readPoll,
   seedIfEmpty,
   type LivePoll,
   type PollSummary,
 } from "./poll-repo";
 
-export type { LivePoll, PollOption, PollSummary } from "./poll-repo";
+export type { LivePoll, PollOption, PollSummary, VoterProfileRow } from "./poll-repo";
+export { effectiveMaxChoices } from "./poll-repo";
 
 const VOTER_COOKIE = "pulse_vk";
 const VOTER_MAX_AGE = 60 * 60 * 24 * 400;
@@ -69,17 +71,42 @@ export const createLivePoll = createServerFn({ method: "POST" })
   .validator(
     z.object({
       question: z.string().trim().min(1).max(80),
-      options: z.array(z.string().trim().min(1).max(40)).min(2).max(8),
-    }),
+      options: z.array(z.string().trim().min(1).max(40)).min(1).max(8),
+      voterNoteLabel: z.string().trim().max(20),
+      maxChoices: z.number().int().min(0).max(8),
+      writeInLabel: z.string().trim().max(40),
+    }).refine(
+      (data) => {
+        const extra = data.writeInLabel ? 1 : 0;
+        const n = data.options.length + extra;
+        return n >= 2 && n <= 8;
+      },
+      { message: "至少两个选项，填空也算一项" },
+    ),
   )
   .handler(async ({ data, context }): Promise<LivePoll> => {
     const sql = await getDb();
     const key = voterKey();
     const labels = data.options.map((label) => label.trim()).filter(Boolean);
-    await createPoll(sql, data.question.trim(), labels, context.userId);
+    await createPoll(
+      sql,
+      data.question.trim(),
+      labels,
+      context.userId,
+      data.voterNoteLabel.trim(),
+      data.maxChoices,
+      data.writeInLabel.trim(),
+    );
     const poll = await readPoll(sql, key);
     if (!poll) throw new Error("创建失败");
     return poll;
+  });
+
+export const listVoterProfiles = createServerFn({ method: "GET" })
+  .middleware([authMiddleware])
+  .handler(async (): Promise<import("./poll-repo").VoterProfileRow[]> => {
+    const sql = await getDb();
+    return listRepoVoterProfiles(sql);
   });
 
 export const closeLivePoll = createServerFn({ method: "POST" })
@@ -93,12 +120,21 @@ export const closeLivePoll = createServerFn({ method: "POST" })
 export const castVote = createServerFn({ method: "POST" })
   .validator(
     z.object({
-      optionId: z.string().min(1),
+      optionIds: z.array(z.string().min(1)).min(1).max(8),
+      note: z.string().trim().max(40).optional(),
+      writeInText: z.string().trim().max(40).optional(),
       pollId: z.string().min(1).optional(),
     }),
   )
   .handler(async ({ data }): Promise<LivePoll> => {
     const sql = await getDb();
     const key = voterKey();
-    return castRepoVote(sql, key, data.optionId, data.pollId);
+    return castRepoVote(
+      sql,
+      key,
+      data.optionIds,
+      data.note ?? "",
+      data.pollId,
+      data.writeInText ?? "",
+    );
   });

@@ -1,7 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
+import { useState } from "react";
 import {
   castVote,
+  effectiveMaxChoices,
   fetchLivePoll,
   fetchPollById,
   type LivePoll,
@@ -9,6 +11,8 @@ import {
 import { useCountUp } from "@/lib/use-count-up";
 import { OptionRow } from "@/components/poll/option-row";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 
 /**
  * One live poll channel: 1.2s refetch keeps every open tab on the same true
@@ -28,18 +32,39 @@ function useLivePoll(pollId: string | undefined, initialData?: LivePoll) {
   });
 
   const vote = useMutation({
-    mutationFn: (optionId: string) =>
-      castVote({ data: { optionId, pollId } }),
-    onMutate: async (optionId) => {
+    mutationFn: ({
+      optionIds,
+      note,
+      writeInText,
+    }: {
+      optionIds: string[];
+      note: string;
+      writeInText: string;
+    }) => castVote({ data: { optionIds, note, writeInText, pollId } }),
+    onMutate: async ({ optionIds, note, writeInText }) => {
       await queryClient.cancelQueries({ queryKey });
       const prev = queryClient.getQueryData<LivePoll>(queryKey);
-      if (prev && !prev.votedId) {
+      if (prev && (prev.votedIds?.length ?? 0) === 0) {
+        const picked = new Set(optionIds);
         queryClient.setQueryData<LivePoll>(queryKey, {
           ...prev,
-          votedId: optionId,
-          total: prev.total + 1,
+          votedId: optionIds[0] ?? null,
+          votedIds: optionIds,
+          myNote: note || null,
+          myWriteIn: writeInText || null,
+          total: prev.total + optionIds.length,
           options: prev.options.map((row) =>
-            row.id === optionId ? { ...row, votes: row.votes + 1 } : row,
+            picked.has(row.id)
+              ? {
+                  ...row,
+                  votes: row.votes + 1,
+                  notes: note ? [...(row.notes ?? []), note] : row.notes,
+                  writeIns:
+                    row.isWriteIn && writeInText
+                      ? [...(row.writeIns ?? []), writeInText]
+                      : row.writeIns,
+                }
+              : row,
           ),
         });
       }
@@ -64,21 +89,68 @@ export function LivePollView({
   pollId?: string;
 }) {
   const { poll, isError, vote } = useLivePoll(pollId, initialData);
+  const [note, setNote] = useState("");
+  const [picked, setPicked] = useState<string[]>([]);
+  const [writeInText, setWriteInText] = useState("");
   const total = useCountUp(poll?.total ?? 0);
+  const asksForNote = Boolean(poll?.voterNoteLabel.trim());
+  const hasVoted = Boolean(poll && (poll.votedIds?.length ?? 0) > 0);
+  const filledNote = (hasVoted ? (poll?.myNote ?? "") : note).trim();
+  const needsNote = Boolean(asksForNote && poll && !hasVoted && !poll.closed);
+  const multiple = Boolean(poll && (poll.maxChoices === 0 || poll.maxChoices > 1));
+  const writeInOption = poll?.options.find((row) => row.isWriteIn);
+  const cap = poll
+    ? effectiveMaxChoices(poll.maxChoices, poll.options.length)
+    : 1;
+  const canVote = Boolean(
+    poll && !poll.closed && !hasVoted && (!asksForNote || filledNote),
+  );
+  const pickingWriteIn = Boolean(
+    writeInOption && picked.includes(writeInOption.id),
+  );
+  const writeInReady = !pickingWriteIn || Boolean(writeInText.trim());
+  const needsConfirm = multiple || pickingWriteIn;
+
+  function submitVote(optionIds: string[]) {
+    vote.mutate({
+      optionIds,
+      note: filledNote,
+      writeInText: writeInText.trim(),
+    });
+  }
+
+  function toggleOption(optionId: string) {
+    if (!poll || !canVote || vote.isPending) return;
+    const isFill = poll.options.some((row) => row.id === optionId && row.isWriteIn);
+    if (!multiple) {
+      if (isFill) {
+        setPicked([optionId]);
+        return;
+      }
+      setPicked([]);
+      submitVote([optionId]);
+      return;
+    }
+    setPicked((prev) => {
+      if (prev.includes(optionId)) return prev.filter((id) => id !== optionId);
+      if (prev.length >= cap) return prev;
+      return [...prev, optionId];
+    });
+  }
 
   if (isError) {
     return (
       <p className="text-sm text-muted">
-        暂时读不到现场投票。
-        <Link to="/new" className="ml-2 text-foreground underline">
-          发起新投票
+        现在看不到投票。
+        <Link to="/polls" className="ml-2 text-foreground underline">
+          看全部
         </Link>
       </p>
     );
   }
 
   if (!poll) {
-    return <p className="text-sm text-muted">正在同步…</p>;
+    return <p className="text-sm text-muted">加载中</p>;
   }
 
   return (
@@ -86,40 +158,86 @@ export function LivePollView({
       className={`flex flex-col gap-6${poll.closed ? " poll-closed" : ""}`}
     >
       <div>
-        <p className="text-xs font-medium tracking-wide text-muted">
-          现场问题
-        </p>
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
+        <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
           {poll.question}
           {poll.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
         </h1>
         <p className="mt-2 text-sm tabular-nums text-muted">
           共 {total} 票
           {poll.closed
-            ? " · 已结束,感谢参与"
-            : poll.votedId
-              ? " · 已投票。这是你的一票。"
-              : " · 每人一票"}
+            ? " · 已结束"
+            : hasVoted
+              ? ` · 你投了 ${poll.votedIds.length} 项`
+              : multiple
+                ? ` · 最多选 ${cap} 项`
+                : ""}
         </p>
       </div>
 
-      <div className="flex flex-col gap-2">
-        {poll.options.map((option) => (
-          <OptionRow
-            key={option.id}
-            option={option}
-            pollId={poll.id}
-            total={poll.total}
-            votedId={poll.votedId}
-            disabled={vote.isPending || poll.closed}
-            onVote={(id) => vote.mutate(id)}
+      {asksForNote ? (
+        <div className="flex flex-col gap-2">
+          <Label htmlFor={`pulse-note-${poll.id}`}>{poll.voterNoteLabel}</Label>
+          <Input
+            id={`pulse-note-${poll.id}`}
+            value={hasVoted ? (poll.myNote ?? "") : note}
+            maxLength={40}
+            readOnly={hasVoted || poll.closed}
+            placeholder={`你的${poll.voterNoteLabel}`}
+            onChange={(e) => setNote(e.target.value)}
           />
-        ))}
+          {needsNote && !filledNote ? (
+            <p className="text-xs text-muted">先写这个，再选。</p>
+          ) : null}
+        </div>
+      ) : null}
+
+      <div className="flex flex-col gap-2">
+        {poll.options.map((option) => {
+          const selected = hasVoted
+            ? poll.votedIds.includes(option.id)
+            : picked.includes(option.id);
+          const atMax = multiple && !hasVoted && picked.length >= cap;
+          return (
+            <OptionRow
+              key={option.id}
+              option={option}
+              pollId={poll.id}
+              total={poll.total}
+              votedIds={poll.votedIds}
+              selected={selected}
+              multiple={multiple}
+              disabled={
+                vote.isPending ||
+                poll.closed ||
+                !canVote ||
+                (atMax && !selected)
+              }
+              writeInValue={hasVoted ? (poll.myWriteIn ?? "") : writeInText}
+              onToggle={toggleOption}
+              onWriteInChange={setWriteInText}
+            />
+          );
+        })}
       </div>
 
-      <Button asChild variant="outline">
-        <Link to="/new">发起新投票</Link>
-      </Button>
+      {needsConfirm && !hasVoted && !poll.closed ? (
+        <Button
+          type="button"
+          disabled={
+            !canVote ||
+            vote.isPending ||
+            picked.length < 1 ||
+            !writeInReady
+          }
+          onClick={() => submitVote(picked)}
+        >
+          {vote.isPending
+            ? "提交中"
+            : pickingWriteIn && !writeInText.trim()
+              ? "先写完"
+              : "确定"}
+        </Button>
+      ) : null}
     </section>
   );
 }

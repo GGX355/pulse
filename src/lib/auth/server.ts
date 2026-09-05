@@ -30,12 +30,14 @@
  * a verified id via `@/lib/auth/middleware`.
  */
 import { betterAuth } from "better-auth";
+import { APIError, createAuthMiddleware } from "better-auth/api";
 import { bearer, genericOAuth } from "better-auth/plugins";
 import { tanstackStartCookies } from "better-auth/tanstack-start";
 import { getCookie } from "@tanstack/react-start/server";
 import { randomBytes } from "node:crypto";
 import { Pool } from "pg";
 import { ensureDbReady, getPglite } from "../db";
+import { adminLockEnabled, isAdminEmail } from "./admin";
 import { emailAndPasswordEnabled } from "./email-password";
 import { GATE_PROVIDER_ID, gateIdentitySessions } from "./gate-session.server";
 import { GROK_PROVIDERS } from "./providers";
@@ -212,6 +214,18 @@ export const auth = betterAuth({
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),
+
+  hooks: {
+    before: createAuthMiddleware(async (ctx) => {
+      if (!adminLockEnabled()) return;
+      if (ctx.path !== "/sign-in/email" && ctx.path !== "/sign-up/email") return;
+      const body = ctx.body as { email?: unknown } | undefined;
+      const email = typeof body?.email === "string" ? body.email : "";
+      if (!isAdminEmail(email)) {
+        throw new APIError("FORBIDDEN", { message: "这个邮箱不能登录后台" });
+      }
+    }),
+  },
 
   // `__Host-` prefixed cookies: the browser REFUSES any same-named cookie that
   // carries a `Domain` attribute, so a sibling `*.grok.me` app cannot "toss" a

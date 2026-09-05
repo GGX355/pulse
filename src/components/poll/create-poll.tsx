@@ -14,12 +14,22 @@ const TEMPLATES = [
   { name: "会议", question: "会议定哪天？", options: ["周一", "周二", "周三", "周四"] },
 ] as const;
 
+const NOTE_PRESETS = ["名字", "地点", "时间"] as const;
+
 export function CreatePollForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isPending } = useCurrentUserState();
   const [question, setQuestion] = useState("午饭吃什么？");
   const [options, setOptions] = useState(["拉面", "便当", "沙拉", ""]);
+  const [askNote, setAskNote] = useState(false);
+  const [noteLabel, setNoteLabel] = useState("名字");
+  const [choiceMode, setChoiceMode] = useState<"single" | "limited" | "unlimited">(
+    "single",
+  );
+  const [choiceLimit, setChoiceLimit] = useState(2);
+  const [includeWriteIn, setIncludeWriteIn] = useState(false);
+  const [writeInLabel, setWriteInLabel] = useState("其他");
 
   const create = useMutation({
     mutationFn: () =>
@@ -27,6 +37,14 @@ export function CreatePollForm() {
         data: {
           question,
           options: options.map((o) => o.trim()).filter(Boolean),
+          voterNoteLabel: askNote ? noteLabel.trim() : "",
+          maxChoices:
+            choiceMode === "single"
+              ? 1
+              : choiceMode === "unlimited"
+                ? 0
+                : Math.min(Math.max(choiceLimit, 2), optionCount),
+          writeInLabel: includeWriteIn ? writeInLabel.trim() || "其他" : "",
         },
       }),
     onSuccess: (poll: LivePoll) => {
@@ -42,30 +60,31 @@ export function CreatePollForm() {
 
   // 发起/结束是管理动作,要登录;投票的人不受影响(见 README 的产品约定)。
   if (isPending) {
-    return <p className="text-sm text-muted">正在确认登录状态…</p>;
+    return <p className="text-sm text-muted">加载中</p>;
   }
   if (!user) {
     return <RedirectToSignIn />;
   }
 
   const filled = options.map((o) => o.trim()).filter(Boolean);
+  const optionCount = filled.length + (includeWriteIn ? 1 : 0);
 
   return (
     <form
       className="flex flex-col gap-6"
       onSubmit={(e) => {
         e.preventDefault();
-        if (filled.length < 2 || !question.trim()) return;
+        if (optionCount < 2 || optionCount > 8 || !question.trim()) return;
+        if (askNote && !noteLabel.trim()) return;
+        if (includeWriteIn && !writeInLabel.trim()) return;
         create.mutate();
       }}
     >
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
-          发起新投票
+          创建投票
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          新问题会替换现场投票。每人仍只能投一票。
-        </p>
+        <p className="mt-2 text-sm text-muted">创建后会出现在投票页。</p>
       </div>
 
       <div className="flex flex-wrap gap-2">
@@ -77,6 +96,12 @@ export function CreatePollForm() {
             onClick={() => {
               setQuestion(tpl.question);
               setOptions([...tpl.options]);
+              setAskNote(false);
+              setNoteLabel("名字");
+              setChoiceMode("single");
+              setChoiceLimit(2);
+              setIncludeWriteIn(false);
+              setWriteInLabel("其他");
             }}
           >
             {tpl.name}
@@ -91,8 +116,124 @@ export function CreatePollForm() {
           value={question}
           maxLength={80}
           onChange={(e) => setQuestion(e.target.value)}
-          placeholder="问一句现场能立刻投的问题"
+          placeholder="问什么"
         />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>要先写点什么吗</Label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={
+              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+              (!askNote
+                ? "border-foreground text-foreground"
+                : "border-border text-muted hover:text-foreground")
+            }
+            onClick={() => setAskNote(false)}
+          >
+            不用填
+          </button>
+          <button
+            type="button"
+            className={
+              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+              (askNote
+                ? "border-foreground text-foreground"
+                : "border-border text-muted hover:text-foreground")
+            }
+            onClick={() => {
+              setAskNote(true);
+              if (!noteLabel.trim()) setNoteLabel("名字");
+            }}
+          >
+            要填写
+          </button>
+        </div>
+        {askNote ? (
+          <>
+            <div className="flex flex-wrap gap-2">
+              {NOTE_PRESETS.map((preset) => (
+                <button
+                  key={preset}
+                  type="button"
+                  className="h-9 rounded-full border border-border px-3 text-sm text-muted touch-manipulation hover:text-foreground"
+                  onClick={() => setNoteLabel(preset)}
+                >
+                  {preset}
+                </button>
+              ))}
+            </div>
+            <Input
+              id="note-label"
+              value={noteLabel}
+              maxLength={20}
+              onChange={(e) => setNoteLabel(e.target.value)}
+              placeholder="比如：名字"
+            />
+          </>
+        ) : (
+          <p className="text-xs text-muted">直接选就行。</p>
+        )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>最多投几项</Label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              ["single", "单选"],
+              ["limited", "最多几项"],
+              ["unlimited", "不限项"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={value}
+              type="button"
+              className={
+                "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+                (choiceMode === value
+                  ? "border-foreground text-foreground"
+                  : "border-border text-muted hover:text-foreground")
+              }
+              onClick={() => {
+                setChoiceMode(value);
+                if (value === "limited") {
+                  setChoiceLimit((n) =>
+                    Math.min(Math.max(n, 2), Math.max(optionCount, 2)),
+                  );
+                }
+              }}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {choiceMode === "limited" ? (
+          <>
+            <Label htmlFor="choice-limit">最多几项</Label>
+            <Input
+              id="choice-limit"
+              type="number"
+              min={2}
+              max={Math.max(optionCount, 2)}
+              value={choiceLimit}
+              onChange={(e) => {
+                const n = Number.parseInt(e.target.value, 10);
+                if (!Number.isFinite(n)) return;
+                setChoiceLimit(Math.min(Math.max(n, 2), 8));
+              }}
+            />
+            <p className="text-xs text-muted">
+              最多 {choiceLimit} 项。
+            </p>
+          </>
+        ) : choiceMode === "unlimited" ? (
+          <p className="text-xs text-muted">想选几项选几项。</p>
+        ) : (
+          <p className="text-xs text-muted">点一下就算投了。</p>
+        )}
       </div>
 
       <div className="flex flex-col gap-3">
@@ -106,32 +247,70 @@ export function CreatePollForm() {
             onChange={(e) => setOption(index, e.target.value)}
           />
         ))}
-        {options.length < 8 ? (
+        {options.length < (includeWriteIn ? 7 : 8) ? (
           <Button
             type="button"
             variant="ghost"
             onClick={() => setOptions((prev) => [...prev, ""])}
           >
-            加一个选项
+            再加一项
           </Button>
+        ) : null}
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={
+              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+              (includeWriteIn
+                ? "border-foreground text-foreground"
+                : "border-border text-muted hover:text-foreground")
+            }
+            onClick={() => setIncludeWriteIn((on) => !on)}
+          >
+            {includeWriteIn ? "已加上「其他」" : "加上「其他」"}
+          </button>
+        </div>
+        {includeWriteIn ? (
+          <>
+            <Input
+              id="write-in-label"
+              value={writeInLabel}
+              maxLength={40}
+              onChange={(e) => setWriteInLabel(e.target.value)}
+              placeholder="这项叫什么，比如「其他」"
+            />
+            <p className="text-xs text-muted">
+              选这项的人自己填。多选的话可以跟上面的一起选。
+            </p>
+          </>
         ) : null}
       </div>
 
       {create.isError ? (
-        <p className="text-sm text-muted">没发出去，请再试一次。</p>
+        <p className="text-sm text-muted">没创建成功，再试一次。</p>
       ) : null}
 
-      <Button type="submit" disabled={create.isPending || filled.length < 2 || !question.trim()}>
+      <Button
+        type="submit"
+        disabled={
+          create.isPending ||
+          optionCount < 2 ||
+          optionCount > 8 ||
+          !question.trim() ||
+          (askNote && !noteLabel.trim()) ||
+          (includeWriteIn && !writeInLabel.trim())
+        }
+      >
         {create.isPending ? (
           <>
             <span
               aria-hidden
               className="size-3.5 animate-spin rounded-full border border-current border-t-transparent"
             />
-            发布中…
+            创建中
           </>
         ) : (
-          "发布到现场"
+          "创建"
         )}
       </Button>
     </form>

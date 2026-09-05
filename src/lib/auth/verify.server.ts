@@ -1,4 +1,5 @@
 import { getRequest } from "@tanstack/react-start/server";
+import { isAdminEmail } from "./admin";
 import { gateIdentityEnabled } from "./gate-identity.server";
 import { auth, authConfigured } from "./server";
 
@@ -93,5 +94,6 @@ export async function requireUserId(bearerToken?: string): Promise<string> {
   }
   const user = await getSessionUser(bearerToken);
   if (!user) throw new UnauthorizedError();
+  if (!isAdminEmail(user.email)) throw new UnauthorizedError();
   return user.id;
 }

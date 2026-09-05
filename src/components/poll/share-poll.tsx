@@ -20,17 +20,29 @@ export function SharePoll() {
       .catch(() => setQr(null));
   }, []);
 
-  function copyLink() {
+  async function copyLink() {
     if (!url) return;
-    void navigator.clipboard.writeText(url).then(() => {
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      } else {
+        const input = document.createElement("input");
+        input.value = url;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand("copy");
+        input.remove();
+      }
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
-    });
+    } catch {
+      window.prompt("复制这条链接", url);
+    }
   }
 
   return (
     <section className="mt-10 animate-in rounded-xl border border-border bg-surface p-4 fill-mode-both fade-in slide-in-from-bottom-3 duration-500">
-      <p className="text-xs font-medium tracking-wide text-muted">分享这场投票</p>
+      <p className="text-xs font-medium tracking-wide text-muted">发给别人</p>
       <div className="mt-3 flex items-center gap-4">
         {qr ? (
           <img
@@ -45,7 +57,7 @@ export function SharePoll() {
         )}
         <div className="flex min-w-0 flex-col gap-2">
           <p className="text-sm text-muted">
-            让现场扫这个码,或把链接直接发到群里。每人一票,结果实时同步。
+            扫这个码就能投，也可以把链接丢群里。
           </p>
           <Button variant="outline" size="sm" className="self-start" onClick={copyLink}>
             {copied ? "已复制 ✓" : "复制链接"}

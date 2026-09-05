@@ -1,14 +1,16 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { closeLivePoll, fetchPollById } from "@/lib/poll-api";
+import { closeLivePoll } from "@/lib/poll-api";
+import { fetchContentById } from "@/lib/draw-api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
+import { DrawView } from "@/components/poll/draw-view";
 import { LivePollView } from "@/components/poll/live-poll";
 import { SharePoll } from "@/components/poll/share-poll";
-import { SiteShell } from "@/components/site-shell";
 
 export const Route = createFileRoute("/poll/$pollId")({
-  loader: ({ params }) => fetchPollById({ data: { pollId: params.pollId } }),
+  loader: ({ params }) =>
+    fetchContentById({ data: { contentId: params.pollId } }),
   component: PollDetailPage,
 });
 
@@ -18,23 +20,25 @@ function PollDetailPage() {
 
   if (initialData === null) {
     return (
-      <SiteShell>
-        <p className="text-sm text-muted">
-          没有找到这个投票(可能已被删除)。
-          <Link to="/polls" className="ml-2 text-foreground underline">
-            看看全部投票
-          </Link>
-        </p>
-      </SiteShell>
+      <p className="text-sm text-muted">
+        没有找到这个内容(可能已被删除)。
+        <Link to="/polls" className="ml-2 text-foreground underline">
+          看看全部内容
+        </Link>
+      </p>
     );
   }
 
   return (
-    <SiteShell>
-      <LivePollView initialData={initialData} pollId={pollId} />
+    <>
+      {initialData.kind === "draw" ? (
+        <DrawView initialData={initialData.draw} pollId={pollId} />
+      ) : (
+        <LivePollView initialData={initialData.poll} pollId={pollId} />
+      )}
       <ClosePollButton pollId={pollId} />
       <SharePoll />
-    </SiteShell>
+    </>
   );
 }
 
@@ -45,18 +49,25 @@ function ClosePollButton({ pollId }: { pollId: string }) {
   const close = useMutation({
     mutationFn: () => closeLivePoll({ data: { pollId } }),
     onSettled: () => {
+      void queryClient.invalidateQueries({ queryKey: ["content", pollId] });
       void queryClient.invalidateQueries({ queryKey: ["poll", pollId] });
       void queryClient.invalidateQueries({ queryKey: ["live-poll"] });
     },
   });
 
   const initialData = Route.useLoaderData();
+  const content =
+    initialData === null
+      ? null
+      : initialData.kind === "draw"
+        ? initialData.draw
+        : initialData.poll;
   const canClose =
     user !== null &&
-    initialData !== null &&
-    !initialData.closed &&
-    initialData.creatorId !== null &&
-    initialData.creatorId === user.id;
+    content !== null &&
+    !content.closed &&
+    content.creatorId !== null &&
+    content.creatorId === user.id;
   if (!canClose) return null;
 
   return (
@@ -65,15 +76,15 @@ function ClosePollButton({ pollId }: { pollId: string }) {
         variant="outline"
         disabled={close.isPending}
         onClick={() => {
-          if (window.confirm("确定结束这场投票?结束后大家不能再投。")) {
+          if (window.confirm("结束这场活动?结束后大家不能再参与。")) {
             close.mutate();
           }
         }}
       >
-        {close.isPending ? "结束中…" : "结束投票"}
+        {close.isPending ? "结束中" : "结束"}
       </Button>
       {close.isError ? (
-        <p className="mt-2 text-sm text-muted">没结束成,请再试一次。</p>
+        <p className="mt-2 text-sm text-muted">没结束成,再试一次。</p>
       ) : null}
     </div>
   );

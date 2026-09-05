@@ -7,6 +7,7 @@ import {
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { QueryProvider } from "@/components/query-provider";
+import { SiteShell } from "@/components/site-shell";
 import appCss from "../styles.css?url";
 
 const APP_NAME = "Pulse";
@@ -35,7 +36,9 @@ export const Route = createRootRoute({
         <PreviewHostBridge />
         <AuthProvider>
           <QueryProvider>
-            <Outlet />
+            <SiteShell>
+              <Outlet />
+            </SiteShell>
           </QueryProvider>
         </AuthProvider>
         <Scripts />

@@ -1,12 +1,12 @@
 import { createFileRoute, useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
+import { adminLockEnabled } from "@/lib/auth/admin";
 import { authClient } from "@/lib/auth/client";
 import { signOut } from "@/lib/auth/client";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { SiteShell } from "@/components/site-shell";
 
 export const Route = createFileRoute("/login")({
   component: LoginPage,
@@ -19,24 +19,20 @@ function LoginPage() {
   const navigate = useNavigate();
 
   if (isPending) {
-    return (
-      <SiteShell>
-        <p className="text-sm text-muted">正在确认登录状态…</p>
-      </SiteShell>
-    );
+    return <p className="text-sm text-muted">加载中</p>;
   }
 
   if (user) {
     return (
-      <SiteShell>
+      <>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           已经登录
         </h1>
         <p className="mt-2 text-sm text-muted">
-          当前账号:{user.displayName ?? user.primaryEmail}
+          当前账号：{user.displayName ?? user.primaryEmail}
         </p>
         <div className="mt-6 flex gap-3">
-          <Button onClick={() => void navigate({ to: "/new" })}>去发起投票</Button>
+          <Button onClick={() => void navigate({ to: "/new" })}>去后台</Button>
           <Button
             variant="outline"
             onClick={() => {
@@ -46,15 +42,11 @@ function LoginPage() {
             退出登录
           </Button>
         </div>
-      </SiteShell>
+      </>
     );
   }
 
-  return (
-    <SiteShell>
-      <AuthForm onDone={() => void navigate({ to: "/new" })} />
-    </SiteShell>
-  );
+  return <AuthForm onDone={() => void navigate({ to: "/new" })} />;
 }
 
 function AuthForm({ onDone }: { onDone: () => void }) {
@@ -97,7 +89,10 @@ function AuthForm({ onDone }: { onDone: () => void }) {
           {mode === "signin" ? "登录" : "注册"}
         </h1>
         <p className="mt-2 text-sm text-muted">
-          登录后才能发起和结束投票。投票的人不需要登录。
+          投票不用登录。创建和结束投票需要登录。
+          {adminLockEnabled()
+            ? " 只有指定邮箱能登录。"
+            : " 现在谁都能注册。"}
         </p>
       </div>
 
@@ -142,7 +137,7 @@ function AuthForm({ onDone }: { onDone: () => void }) {
             value={name}
             maxLength={40}
             onChange={(e) => setName(e.target.value)}
-            placeholder="现场展示的名字"
+            placeholder="怎么称呼你"
           />
         </div>
       ) : null}
@@ -181,12 +176,12 @@ function AuthForm({ onDone }: { onDone: () => void }) {
               aria-hidden
               className="size-3.5 animate-spin rounded-full border border-current border-t-transparent"
             />
-            请稍候…
+            {mode === "signin" ? "登录中" : "注册中"}
           </>
         ) : mode === "signin" ? (
           "登录"
         ) : (
-          "注册并登录"
+          "注册"
         )}
       </Button>
     </form>

@@ -1,5 +1,4 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { SiteShell } from "@/components/site-shell";
 import { fetchPollList } from "@/lib/poll-api";
 
 export const Route = createFileRoute("/polls")({
@@ -18,24 +17,19 @@ function formatDate(ms: number) {
 
 function PollsPage() {
   const polls = Route.useLoaderData();
+  const liveIndex = polls.findIndex((poll) => !poll.closed);
 
   return (
-    <SiteShell>
+    <>
       <div className="mb-8">
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           全部投票
         </h1>
-        <p className="mt-2 text-sm text-muted">
-          最新的就是现场正在进行的投票,点进去能直接投。
-        </p>
       </div>
 
       {polls.length === 0 ? (
         <p className="text-sm text-muted">
           还没有投票。
-          <Link to="/new" className="ml-2 text-foreground underline">
-            发起第一个
-          </Link>
         </p>
       ) : (
         <div className="flex flex-col divide-y divide-border">
@@ -44,7 +38,7 @@ function PollsPage() {
               key={poll.id}
               to="/poll/$pollId"
               params={{ pollId: poll.id }}
-              className="flex animate-in items-center justify-between gap-3 py-4 fill-mode-both touch-manipulation fade-in slide-in-from-bottom-2 duration-500 hover:opacity-80"
+              className="flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
               style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
             >
               <span className="min-w-0">
@@ -52,14 +46,19 @@ function PollsPage() {
                   <span className="truncate font-medium text-foreground">
                     {poll.question}
                   </span>
+                  {poll.kind === "draw" ? (
+                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
+                      🎲 抽签
+                    </span>
+                  ) : null}
                   {poll.closed ? (
                     <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
                       已结束
                     </span>
-                  ) : index === 0 ? (
+                  ) : index === liveIndex ? (
                     <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
                       <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-                      现场中
+                      进行中
                     </span>
                   ) : null}
                 </span>
@@ -71,12 +70,12 @@ function PollsPage() {
                 </span>
               </span>
               <span className="shrink-0 text-sm tabular-nums text-muted">
-                {poll.total} 票
+                {poll.kind === "draw" ? `${poll.total} 人抽` : `${poll.total} 票`}
               </span>
             </Link>
           ))}
         </div>
       )}
-    </SiteShell>
+    </>
   );
 }

@@ -17,8 +17,8 @@
   --radius: 0.75rem;
   --font-sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI",
     system-ui, sans-serif;
-  --font-display: "Songti SC", "Songti TC", "Noto Serif SC", "Times New Roman",
-    serif;
+  --font-display: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI",
+    system-ui, sans-serif;
 
   /* Motion tokens — one vocabulary for every transition in the app. */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
@@ -94,7 +94,6 @@
 
 .poll-option:hover {
   border-color: color-mix(in oklab, var(--color-foreground) 22%, transparent);
-  transform: translateY(-1px);
 }
 
 .poll-option:active:not(.is-locked) {
@@ -150,7 +149,7 @@
 .vote-float {
   position: absolute;
   right: 0;
-  top: -0.25rem;
+  top: 0;
   font-size: 0.75rem;
   line-height: 1;
   color: var(--color-accent);
@@ -164,7 +163,7 @@
   border: 1.5px solid color-mix(in oklab, var(--color-foreground) 45%, transparent);
   border-radius: 6px;
   padding: 2px 10px;
-  font-family: var(--font-display);
+  font-family: var(--font-sans);
   font-size: 0.8rem;
   letter-spacing: 0.35em;
   text-indent: 0.35em;
@@ -185,27 +184,19 @@
     shake-x 380ms 200ms var(--ease-out-expo);
 }
 
-/* ── Route transitions (View Transitions API) ──────────────────────────── */
-
-::view-transition-old(root) {
-  animation: vt-out 150ms ease both;
+/* Page body only — header stays put. */
+.page-enter {
+  animation: page-in 320ms var(--ease-out-expo) both;
 }
 
-::view-transition-new(root) {
-  animation: vt-in 200ms var(--ease-out-expo) both;
-}
-
-@keyframes vt-out {
-  to {
-    opacity: 0;
-    transform: translateY(-6px);
-  }
-}
-
-@keyframes vt-in {
+@keyframes page-in {
   from {
     opacity: 0;
-    transform: translateY(8px);
+    transform: translateY(14px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
   }
 }
 
