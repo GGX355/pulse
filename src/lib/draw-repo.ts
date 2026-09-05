@@ -44,6 +44,73 @@ export type Sql = {
   ): Promise<T[]>;
 };
 
+/**
+ * 盲选视图 —— 参与者能看到的抽签形态。抽之前(blind)只有签位名字:没有已抽
+ * 人数、没有剩余、没有总数,连"自己抽到什么"也只在真正抽完后出现;抽完或
+ * 结束后(blind=false)全量可见。数字隐藏发生在数据层,前端藏不住也漏不出。
+ */
+export type DrawSlotPublic = { id: string; label: string };
+
+type DrawViewBase = {
+  id: string;
+  title: string;
+  closed: boolean;
+  /** 有限签全部抽完且没有不限量兜底。盲选态也保留:抽满与否必须告诉人。 */
+  allTaken: boolean;
+  creatorId: string | null;
+};
+
+/** 盲选态:抽之前 —— 只有签位名字,没有数字,也没有"我抽到了什么"。 */
+export type DrawBlindView = DrawViewBase & {
+  blind: true;
+  slots: DrawSlotPublic[];
+  myDraw: null;
+  totalTaken: null;
+};
+
+/** 揭示态:自己抽完或活动结束后 —— 全量数字对这个人公开。 */
+export type DrawRevealedView = DrawViewBase & {
+  blind: false;
+  slots: DrawSlot[];
+  myDraw: { slotId: string; label: string } | null;
+  totalTaken: number;
+};
+
+export type DrawView = DrawBlindView | DrawRevealedView;
+
+/** 参与者视角:抽之前隐藏全部数字,抽完或结束后全量公开。 */
+export function drawToView(draw: DrawPoll): DrawView {
+  const base = {
+    id: draw.id,
+    title: draw.title,
+    closed: draw.closed,
+    allTaken: draw.allTaken,
+    creatorId: draw.creatorId,
+  };
+  if (draw.closed || draw.myDraw) {
+    return {
+      ...base,
+      blind: false,
+      slots: draw.slots.map((slot) => ({
+        id: slot.id,
+        label: slot.label,
+        count: slot.count,
+        taken: slot.taken,
+        remaining: slot.remaining,
+      })),
+      myDraw: draw.myDraw,
+      totalTaken: draw.totalTaken,
+    };
+  }
+  return {
+    ...base,
+    blind: true,
+    slots: draw.slots.map((slot) => ({ id: slot.id, label: slot.label })),
+    myDraw: null,
+    totalTaken: null,
+  };
+}
+
 export type CreateDrawInput = {
   title: string;
   /** 有限签位;count >= 1。 */
@@ -294,4 +361,84 @@ export async function drawClaimList(
     voterMasked: maskKey(row.voter_key),
     drewAtMs: Number(row.drew_at_ms),
   }));
+}
+
+/** 抽签列表页的一行。盲选:进行中的抽签不显示任何人数。 */
+export type DrawSummary = {
+  id: string;
+  title: string;
+  closed: boolean;
+  /** 已抽人数 —— 仅已结束后公开;进行中为 null(盲选)。 */
+  total: number | null;
+  createdAtMs: number;
+};
+
+export async function listDraws(sql: Sql, limit = 50): Promise<DrawSummary[]> {
+  const rows = await sql.query<{
+    id: string;
+    question: string;
+    closed: boolean;
+    total: number | null;
+    created_ms: number;
+  }>(
+    `select p.id, p.question,
+            (p.closed_at is not null) as closed,
+            case when p.closed_at is not null then count(v.id)::int else null end as total,
+            (extract(epoch from p.created_at) * 1000)::bigint as created_ms
+     from polls p
+     left join poll_options o on o.poll_id = p.id
+     left join poll_votes v on v.option_id = o.id
+     where p.kind = 'draw'
+     group by p.id, p.question, p.created_at, p.closed_at
+     order by p.created_at desc
+     limit $1`,
+    [limit],
+  );
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.question,
+    closed: Boolean(row.closed),
+    total: row.total === null ? null : Number(row.total),
+    createdAtMs: Number(row.created_ms),
+  }));
+}
+
+/** 发起人后台的一行统计:每个签位的真实数字,随时可看,盲选不影响。 */
+export type DrawAdminStats = {
+  id: string;
+  title: string;
+  closed: boolean;
+  allTaken: boolean;
+  totalTaken: number;
+  slots: DrawSlot[];
+  claims: DrawClaim[];
+};
+
+/** 只有发起人能拿全量数据;别人调直接拒。 */
+export async function drawAdminStats(
+  sql: Sql,
+  pollId: string,
+  userId: string,
+): Promise<DrawAdminStats> {
+  const polls = await sql.query<{ creator_id: string | null }>(
+    `select creator_id from polls where id = $1 and kind = 'draw' limit 1`,
+    [pollId],
+  );
+  const poll = polls[0];
+  if (!poll) throw new Error("没有这个抽签");
+  if (poll.creator_id !== userId) throw new Error("只有发起人能看后台数据");
+
+  // myDraw 与后台无关,传一个不可能命中的 key。
+  const draw = await readDrawById(sql, `admin:${pollId}`, pollId);
+  if (!draw) throw new Error("没有这个抽签");
+  const claims = await drawClaimList(sql, pollId, userId);
+  return {
+    id: draw.id,
+    title: draw.title,
+    closed: draw.closed,
+    allTaken: draw.allTaken,
+    totalTaken: draw.totalTaken,
+    slots: draw.slots,
+    claims,
+  };
 }

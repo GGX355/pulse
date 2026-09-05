@@ -277,6 +277,55 @@
   }
 }
 
+/* ── Draw: blind cards ──────────────────────────────────────────────────
+   抽之前人人平等:只有签位名字,没有任何数字。问号徽标提醒这是盲选。 */
+
+.draw-blind-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+@media (max-width: 480px) {
+  .draw-blind-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.draw-blind-card {
+  position: relative;
+  overflow: hidden;
+  border: 1px solid var(--color-border);
+  border-radius: calc(var(--radius) + 2px);
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in oklab, var(--color-foreground) 5%, transparent),
+      transparent 60%
+    ),
+    var(--color-surface);
+  padding: 12px 14px 10px 46px;
+  animation: pop-in 420ms var(--ease-spring) both;
+}
+
+.draw-blind-card::before {
+  content: "?";
+  position: absolute;
+  left: 14px;
+  top: 50%;
+  translate: 0 -50%;
+  display: grid;
+  place-items: center;
+  width: 22px;
+  height: 22px;
+  border: 1.5px solid color-mix(in oklab, var(--color-accent) 45%, transparent);
+  border-radius: 999px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--color-accent);
+}
+
 /* The system asks, the app obeys. */
 @media (prefers-reduced-motion: reduce) {
   *,

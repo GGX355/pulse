@@ -253,8 +253,16 @@ export async function createPoll(
   return id;
 }
 
-/** Newest-first poll summaries for the list page. */
-export async function listPolls(sql: Sql, limit = 50): Promise<PollSummary[]> {
+/** Newest-first poll summaries for the list page. Draws are fetched
+ *  separately (listDraws) so neither page's payload carries the other kind. */
+export async function listPolls(
+  sql: Sql,
+  limit = 50,
+  kind: "poll" | "all" = "poll",
+): Promise<PollSummary[]> {
+  const where = kind === "all" ? "" : `where p.kind = $2`;
+  const params: unknown[] = [limit];
+  if (kind !== "all") params.push(kind);
   const rows = await sql.query<{
     id: string;
     question: string;
@@ -270,10 +278,11 @@ export async function listPolls(sql: Sql, limit = 50): Promise<PollSummary[]> {
      from polls p
      left join poll_options o on o.poll_id = p.id
      left join poll_votes v on v.option_id = o.id
+     ${where}
      group by p.id, p.question, p.kind, p.created_at, p.closed_at
      order by p.created_at desc
      limit $1`,
-    [limit],
+    params,
   );
   return rows.map((row) => ({
     id: row.id,

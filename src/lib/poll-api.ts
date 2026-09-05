@@ -62,7 +62,8 @@ export const fetchPollList = createServerFn({ method: "GET" }).handler(
   async (): Promise<PollSummary[]> => {
     const sql = await getDb();
     await seedIfEmpty(sql);
-    return listPolls(sql);
+    // 列表页只出投票;抽签走 /draw(fetchDrawList),两边互不掺数据。
+    return listPolls(sql, 50, "poll");
   },
 );
 

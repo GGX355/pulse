@@ -1,16 +1,31 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import {
+  createFileRoute,
+  Link,
+  redirect,
+} from "@tanstack/react-router";
 import { closeLivePoll } from "@/lib/poll-api";
 import { fetchContentById } from "@/lib/draw-api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
-import { DrawView } from "@/components/poll/draw-view";
 import { LivePollView } from "@/components/poll/live-poll";
 import { SharePoll } from "@/components/poll/share-poll";
 
 export const Route = createFileRoute("/poll/$pollId")({
-  loader: ({ params }) =>
-    fetchContentById({ data: { contentId: params.pollId } }),
+  // 抽签与投票已经分家:老分享链接里的抽签直接搬到 /draw/$drawId。
+  loader: async ({ params }) => {
+    const content = await fetchContentById({
+      data: { contentId: params.pollId },
+    });
+    if (content && content.kind === "draw") {
+      throw redirect({
+        to: "/draw/$drawId",
+        params: { drawId: params.pollId },
+        replace: true,
+      });
+    }
+    return content;
+  },
   component: PollDetailPage,
 });
 
@@ -31,11 +46,9 @@ function PollDetailPage() {
 
   return (
     <>
-      {initialData.kind === "draw" ? (
-        <DrawView initialData={initialData.draw} pollId={pollId} />
-      ) : (
+      {initialData?.kind === "poll" ? (
         <LivePollView initialData={initialData.poll} pollId={pollId} />
-      )}
+      ) : null}
       <ClosePollButton pollId={pollId} />
       <SharePoll />
     </>
@@ -56,12 +69,7 @@ function ClosePollButton({ pollId }: { pollId: string }) {
   });
 
   const initialData = Route.useLoaderData();
-  const content =
-    initialData === null
-      ? null
-      : initialData.kind === "draw"
-        ? initialData.draw
-        : initialData.poll;
+  const content = initialData?.kind === "poll" ? initialData.poll : null;
   const canClose =
     user !== null &&
     content !== null &&

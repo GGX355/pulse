@@ -1,9 +1,9 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { fetchPollList } from "@/lib/poll-api";
+import { fetchDrawList } from "@/lib/draw-api";
 
-export const Route = createFileRoute("/polls")({
-  loader: () => fetchPollList(),
-  component: PollsPage,
+export const Route = createFileRoute("/draw/")({
+  loader: () => fetchDrawList(),
+  component: DrawsPage,
 });
 
 function formatDate(ms: number) {
@@ -15,77 +15,82 @@ function formatDate(ms: number) {
   });
 }
 
-function PollsPage() {
-  const polls = Route.useLoaderData();
-  const liveIndex = polls.findIndex((poll) => !poll.closed);
+function DrawsPage() {
+  const draws = Route.useLoaderData();
 
   return (
     <>
       <div className="mb-8 flex items-end justify-between gap-3">
         <div>
           <h1 className="font-display text-2xl font-semibold tracking-tight">
-            全部投票
+            抽签 · 选人
           </h1>
           <p className="mt-2 text-sm text-muted">
-            实时计票的投票在这里;抽签在
-            <Link to="/draw" className="ml-1 text-foreground underline">
-              抽签页
-            </Link>
-            。
+            盲选:抽之前没人能看到人数和结果。
           </p>
         </div>
         <Link
-          to="/new"
+          to="/draw/new"
           className="shrink-0 rounded-full border border-border px-4 py-2 text-sm text-muted touch-manipulation transition-colors hover:text-foreground"
         >
-          发起投票
+          发起抽签
         </Link>
       </div>
 
-      {polls.length === 0 ? (
+      {draws.length === 0 ? (
         <p className="text-sm text-muted">
-          还没有投票。
+          还没有抽签。
+          <Link to="/draw/new" className="ml-2 text-foreground underline">
+            发起第一个
+          </Link>
         </p>
       ) : (
         <div className="flex flex-col divide-y divide-border">
-          {polls.map((poll, index) => (
+          {draws.map((draw, index) => (
             <Link
-              key={poll.id}
-              to="/poll/$pollId"
-              params={{ pollId: poll.id }}
+              key={draw.id}
+              to="/draw/$drawId"
+              params={{ drawId: draw.id }}
               className="flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
               style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
             >
               <span className="min-w-0">
                 <span className="flex items-center gap-2">
                   <span className="truncate font-medium text-foreground">
-                    {poll.question}
+                    {draw.title}
                   </span>
-                  {poll.closed ? (
+                  {draw.closed ? (
                     <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
                       已结束
                     </span>
-                  ) : index === liveIndex ? (
+                  ) : (
                     <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
                       <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-                      进行中
+                      盲选中
                     </span>
-                  ) : null}
+                  )}
                 </span>
                 <span
                   className="mt-1 block text-xs tabular-nums text-muted"
                   suppressHydrationWarning
                 >
-                  {formatDate(poll.createdAtMs)}
+                  {formatDate(draw.createdAtMs)}
                 </span>
               </span>
               <span className="shrink-0 text-sm tabular-nums text-muted">
-                {poll.total} 票
+                {draw.total === null ? "结果保密" : `${draw.total} 人抽`}
               </span>
             </Link>
           ))}
         </div>
       )}
+
+      <p className="mt-10 text-sm text-muted">
+        想投票?
+        <Link to="/polls" className="ml-2 text-foreground underline">
+          去投票记录
+        </Link>
+      </p>
     </>
   );
 }

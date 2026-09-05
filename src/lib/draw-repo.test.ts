@@ -6,8 +6,11 @@ import { fileURLToPath } from "node:url";
 import { PGlite } from "@electric-sql/pglite";
 import {
   createDraw,
+  drawAdminStats,
   drawClaimList,
   drawOne,
+  drawToView,
+  listDraws,
   readDrawById,
   type Sql,
 } from "./draw-repo.ts";
@@ -208,5 +211,87 @@ describe("draw-repo(内存 PGlite 集成)", () => {
     const pollId = await createPoll(sql, "午饭吃什么？", ["拉面", "便当"]);
     assert.equal(await readDrawById(sql, "k1", pollId), null);
     await assert.rejects(() => drawOne(sql, "k1", pollId), /没有这个抽签/);
+  });
+
+  it("盲选视图:没抽之前只有签位名字,没有任何数字", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", A_B_BLANK);
+
+    const blind = drawToView((await readDrawById(sql, "k1", id))!);
+    assert.equal(blind.blind, true);
+    assert.equal(blind.myDraw, null);
+    assert.equal(blind.totalTaken, null);
+    assert.deepEqual(
+      blind.slots.map((slot) => ({ label: slot.label, secret: "count" in slot })),
+      [
+        { label: "一等奖", secret: false },
+        { label: "二等奖", secret: false },
+        { label: "谢谢参与", secret: false },
+      ],
+    );
+
+    // 别人抽了之后,未抽的人依然盲。
+    await drawOne(sql, "k1", id);
+    const stillBlind = drawToView((await readDrawById(sql, "k2", id))!);
+    assert.equal(stillBlind.blind, true);
+    assert.equal(stillBlind.totalTaken, null);
+  });
+
+  it("盲选揭示:自己抽完立刻看到全量;结束后对所有人公开", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", A_B_BLANK);
+
+    await drawOne(sql, "k1", id);
+    const revealed = drawToView((await readDrawById(sql, "k1", id))!);
+    if (revealed.blind) throw new Error("抽完之后应当是揭示视图");
+    assert.ok(revealed.myDraw);
+    assert.equal(revealed.totalTaken, 1);
+    for (const slot of revealed.slots) {
+      assert.equal(typeof slot.count, "number");
+      assert.equal(typeof slot.taken, "number");
+    }
+
+    await closePoll(sql, id, "user-42");
+    const closedForOther = drawToView((await readDrawById(sql, "k9", id))!);
+    if (closedForOther.blind) throw new Error("结束后应当是揭示视图");
+    assert.equal(closedForOther.closed, true);
+    assert.equal(closedForOther.totalTaken, 1);
+  });
+
+  it("抽签列表:进行中不显示人数,结束后才公开", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", A_B_BLANK);
+    await drawOne(sql, "k1", id);
+
+    const open = await listDraws(sql);
+    const openRow = open.find((row) => row.id === id);
+    assert.ok(openRow);
+    assert.equal(openRow.total, null);
+
+    await closePoll(sql, id, "user-42");
+    const closed = await listDraws(sql);
+    const closedRow = closed.find((row) => row.id === id);
+    assert.ok(closedRow);
+    assert.equal(closedRow.total, 1);
+  });
+
+  it("后台统计:发起人可见全量,别人被拒,投票类型被拒", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", A_B_BLANK);
+    await drawOne(sql, "voter-key-aaaaaaaa", id);
+
+    const stats = await drawAdminStats(sql, id, "user-42");
+    assert.equal(stats.totalTaken, 1);
+    assert.equal(stats.claims.length, 1);
+    assert.equal(stats.slots.length, 3);
+
+    await assert.rejects(
+      () => drawAdminStats(sql, id, "user-other"),
+      /只有发起人能看后台数据/,
+    );
+
+    const { createPoll } = await import("./poll-repo.ts");
+    const pollId = await createPoll(sql, "午饭吃什么？", ["拉面", "便当"]);
+    await assert.rejects(() => drawAdminStats(sql, pollId, "user-42"), /没有这个抽签/);
   });
 });

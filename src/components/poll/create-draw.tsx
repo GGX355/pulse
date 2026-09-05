@@ -73,7 +73,7 @@ export function CreateDrawForm() {
         },
       }),
     onSuccess: (draw) => {
-      void navigate({ to: "/poll/$pollId", params: { pollId: draw.id } });
+      void navigate({ to: "/draw/$drawId", params: { drawId: draw.id } });
     },
     onError: () => setError("没发出去,请再试一次。"),
   });
@@ -102,6 +102,9 @@ export function CreateDrawForm() {
         </h1>
         <p className="mt-2 text-sm text-muted">
           每个签位设一个数量,每人抽一次,抽完即止。抽签的人不需要登录。
+        </p>
+        <p className="mt-1 text-xs text-subtle">
+          盲选模式:参与者抽之前看不到任何人数和结果;你在抽签详情页有实时后台。
         </p>
       </div>
 
