@@ -8,7 +8,6 @@ import { cn } from "@/lib/utils";
 const NAV = [
   { to: "/", label: "现场" },
   { to: "/draw", label: "抽签" },
-  { to: "/polls", label: "记录" },
 ] as const;
 
 const SHELL = "mx-auto w-full max-w-xl px-4";
