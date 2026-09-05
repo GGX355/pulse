@@ -97,7 +97,7 @@ export function DrawView({
     : draw.allTaken
       ? "名额已抽完"
       : draw.blind
-        ? "进行中 · 结果参与后可见"
+        ? "进行中 · 参与后公布结果"
         : `${draw.totalTaken} 人已参与`;
 
   return (
@@ -175,13 +175,9 @@ export function DrawView({
               className="draw-blind-card"
               style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
             >
-              <span className="draw-blind-mark" aria-hidden>
-                ?
-              </span>
               <span className="block truncate font-medium text-foreground">
                 {slot.label}
               </span>
-              <span className="mt-0.5 block text-xs text-subtle">待揭晓</span>
             </div>
           ))}
         </div>

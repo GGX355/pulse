@@ -294,36 +294,40 @@
 
 .draw-blind-card {
   position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 68px;
   overflow: hidden;
   border: 1px solid var(--color-border);
   border-radius: calc(var(--radius) + 2px);
   background:
     linear-gradient(
-      135deg,
-      color-mix(in oklab, var(--color-foreground) 5%, transparent),
-      transparent 60%
+      150deg,
+      color-mix(in oklab, var(--color-foreground) 7%, transparent),
+      transparent 45%,
+      color-mix(in oklab, var(--color-accent) 7%, transparent)
     ),
     var(--color-surface);
-  padding: 12px 14px 10px 46px;
+  padding: 16px 14px;
+  text-align: center;
   animation: pop-in 420ms var(--ease-spring) both;
 }
 
-.draw-blind-card::before {
-  content: "?";
+/* 缓缓扫过的一道高光,给"背面朝上"的卡一点质感 */
+.draw-blind-card::after {
+  content: "";
   position: absolute;
-  left: 14px;
-  top: 50%;
-  translate: 0 -50%;
-  display: grid;
-  place-items: center;
-  width: 22px;
-  height: 22px;
-  border: 1.5px solid color-mix(in oklab, var(--color-accent) 45%, transparent);
-  border-radius: 999px;
-  font-size: 0.8rem;
-  font-weight: 600;
-  line-height: 1;
-  color: var(--color-accent);
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent 42%,
+    color-mix(in oklab, var(--color-foreground) 7%, transparent) 50%,
+    transparent 58%
+  );
+  background-size: 240% 100%;
+  animation: sweep 3.6s ease-in-out infinite;
+  pointer-events: none;
 }
 
 /* The system asks, the app obeys. */
