@@ -14,7 +14,8 @@ import {
   readDrawById,
   type Sql,
 } from "./draw-repo.ts";
-import { closePoll } from "./poll-repo.ts";
+import { rosterStatus } from "./roster.ts";
+import { closePoll, readPoll } from "./poll-repo.ts";
 
 const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 
@@ -333,5 +334,71 @@ describe("draw-repo(内存 PGlite 集成)", () => {
     assert.equal(claims.length, 1);
     assert.equal(claims[0].voterName, null);
     assert.equal(claims[0].voterMasked.length, 7);
+  });
+
+  it("名单抽签:名单外/重复姓名被拒,后台核对反映参与情况", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", {
+      title: "名单抽签",
+      slots: [{ label: "中签", count: 5 }],
+      blankLabel: null,
+      blankCount: null,
+      rosterNames: ["张三", "李四", "王五"],
+    });
+
+    await assert.rejects(
+      () => drawOne(sql, "device-a", id, "赵六"),
+      /姓名不在名单中/,
+    );
+    await drawOne(sql, "device-a", id, "张三");
+    await assert.rejects(
+      () => drawOne(sql, "device-b", id, "张三"),
+      /该姓名已参与/,
+    );
+    await drawOne(sql, "device-c", id, "李四");
+
+    const status = await rosterStatus(sql, id);
+    assert.equal(status.hasRoster, true);
+    assert.equal(status.total, 3);
+    assert.equal(status.doneCount, 2);
+    const zhang = status.entries.find((entry) => entry.name === "张三");
+    assert.ok(zhang?.done);
+    assert.ok(zhang.result);
+    const wang = status.entries.find((entry) => entry.name === "王五");
+    assert.equal(wang?.done, false);
+  });
+
+  it("名单投票:投票侧同样受名单限制,核对视图一致", async () => {
+    const sql = await makeSql();
+    const { createPoll, castVote } = await import("./poll-repo.ts");
+    const id = await createPoll(
+      sql,
+      "聚餐吗",
+      ["去", "不去"],
+      "user-42",
+      "姓名",
+      1,
+      "",
+      ["张三", "李四"],
+    );
+
+    await assert.rejects(
+      () => castVote(sql, "device-a", "去", "王五", id),
+      /姓名不在名单中/,
+    );
+    const poll = await readPoll(sql, "device-a", id);
+    assert.ok(poll);
+    const go = poll.options.find((option) => option.label === "去");
+    assert.ok(go);
+    await castVote(sql, "device-a", go.id, "张三", id);
+    await assert.rejects(
+      () => castVote(sql, "device-b", go.id, "张三", id),
+      /该姓名已参与/,
+    );
+
+    const status = await rosterStatus(sql, id);
+    assert.equal(status.doneCount, 1);
+    assert.equal(status.entries[0].name, "张三");
+    assert.ok(status.entries[0].result);
   });
 });

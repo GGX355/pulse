@@ -2,6 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
+import { rosterStatus, type RosterStatus } from "./roster";
 import {
   castVote as castRepoVote,
   closePoll as closeRepoPoll,
@@ -15,6 +16,7 @@ import {
 } from "./poll-repo";
 
 export type { LivePoll, PollOption, PollSummary, VoterProfileRow } from "./poll-repo";
+export type { RosterEntry, RosterStatus } from "./roster";
 export { effectiveMaxChoices } from "./poll-repo";
 
 const VOTER_COOKIE = "pulse_vk";
@@ -76,6 +78,7 @@ export const createLivePoll = createServerFn({ method: "POST" })
       voterNoteLabel: z.string().trim().max(20),
       maxChoices: z.number().int().min(0).max(8),
       writeInLabel: z.string().trim().max(40),
+      roster: z.array(z.string().trim().min(1).max(40)).max(500),
     }).refine(
       (data) => {
         const extra = data.writeInLabel ? 1 : 0;
@@ -89,14 +92,20 @@ export const createLivePoll = createServerFn({ method: "POST" })
     const sql = await getDb();
     const key = voterKey();
     const labels = data.options.map((label) => label.trim()).filter(Boolean);
+    // 配了名单就必须记名 —— 没填提示时默认按「姓名」。
+    const noteLabel =
+      data.roster.length > 0 && !data.voterNoteLabel.trim()
+        ? "姓名"
+        : data.voterNoteLabel.trim();
     await createPoll(
       sql,
       data.question.trim(),
       labels,
       context.userId,
-      data.voterNoteLabel.trim(),
+      noteLabel,
       data.maxChoices,
       data.writeInLabel.trim(),
+      data.roster,
     );
     const poll = await readPoll(sql, key);
     if (!poll) throw new Error("创建失败");
@@ -108,6 +117,23 @@ export const listVoterProfiles = createServerFn({ method: "GET" })
   .handler(async (): Promise<import("./poll-repo").VoterProfileRow[]> => {
     const sql = await getDb();
     return listRepoVoterProfiles(sql);
+  });
+
+/** 发起人专属:名单核对(谁已参与/谁未参与 + 结果)。 */
+export const fetchRosterStatus = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ pollId: z.string().min(1) }))
+  .handler(async ({ data, context }): Promise<RosterStatus> => {
+    const sql = await getDb();
+    const rows = await sql.query<{ creator_id: string | null }>(
+      `select creator_id from polls where id = $1 limit 1`,
+      [data.pollId],
+    );
+    if (!rows[0]) throw new Error("内容不存在");
+    if (rows[0].creator_id !== context.userId) {
+      throw new Error("只有发起人能查看名单核对");
+    }
+    return rosterStatus(sql, data.pollId);
   });
 
 export const closeLivePoll = createServerFn({ method: "POST" })

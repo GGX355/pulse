@@ -51,8 +51,17 @@ export function CreateDrawForm() {
   const [blankLabel, setBlankLabel] = useState("未中");
   const [blankCount, setBlankCount] = useState("10");
   const [askName, setAskName] = useState(false);
-  const [noteLabel, setNoteLabel] = useState("名字");
+  const [noteLabel, setNoteLabel] = useState("姓名");
+  const [rosterOn, setRosterOn] = useState(false);
+  const [rosterText, setRosterText] = useState("");
   const [error, setError] = useState<string | null>(null);
+
+  const rosterNames = rosterOn
+    ? rosterText
+        .split(/\r?\n|[，,、;；]/)
+        .map((name) => name.trim())
+        .filter(Boolean)
+    : [];
 
   function setSlot(index: number, patch: Partial<SlotRow>) {
     setSlots((prev) => prev.map((row, i) => (i === index ? { ...row, ...patch } : row)));
@@ -72,7 +81,8 @@ export function CreateDrawForm() {
           blankMode,
           blankLabel: blankLabel.trim(),
           blankCount: Math.max(1, parseInt(blankCount, 10) || 1),
-          voterNoteLabel: askName ? noteLabel.trim() : "",
+          voterNoteLabel: askName || rosterOn ? noteLabel.trim() : "",
+          roster: rosterNames,
         },
       }),
     onSuccess: (draw) => {
@@ -259,7 +269,7 @@ export function CreateDrawForm() {
             </button>
           ))}
         </div>
-        {askName ? (
+        {askName && !rosterOn ? (
           <div className="flex items-center gap-2">
             <Input
               value={noteLabel}
@@ -271,10 +281,55 @@ export function CreateDrawForm() {
             />
           </div>
         ) : null}
-        {askName ? (
+        {askName && !rosterOn ? (
           <p className="text-xs text-subtle">
             参与者抽签前需填写该项，用于名单核对。
           </p>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Label>名单核对</Label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              [false, "不使用名单"],
+              [true, "使用名单"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={String(value)}
+              type="button"
+              onClick={() => {
+                setRosterOn(value);
+                if (value) setAskName(true);
+              }}
+              className={cn(
+                "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
+                rosterOn === value
+                  ? "border-accent/40 bg-surface-2 text-foreground"
+                  : "border-border text-muted hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {rosterOn ? (
+          <>
+            <textarea
+              value={rosterText}
+              rows={4}
+              maxLength={8000}
+              placeholder={"每行一个姓名，粘贴名单即可，如：\n张三\n李四\n王五"}
+              aria-label="名单"
+              className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(e) => setRosterText(e.target.value)}
+            />
+            <p className="text-xs text-subtle">
+              已识别 {rosterNames.length} 人。启用后仅名单内人员可抽签，后台实时显示参与情况。
+            </p>
+          </>
         ) : null}
       </div>
 

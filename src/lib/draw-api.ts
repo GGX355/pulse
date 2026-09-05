@@ -163,6 +163,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
         blankLabel: z.string().trim().max(10),
         blankCount: z.number().int().min(1).max(99999),
         voterNoteLabel: z.string().trim().max(20),
+        roster: z.array(z.string().trim().min(1).max(40)).max(500),
       })
       .refine(
         (data) =>
@@ -184,7 +185,10 @@ export const createDrawLive = createServerFn({ method: "POST" })
       blankLabel:
         data.blankMode === "none" ? null : data.blankLabel.trim() || "未中",
       blankCount: data.blankMode === "count" ? data.blankCount : null,
-      voterNoteLabel: data.voterNoteLabel,
+      voterNoteLabel: data.roster.length > 0 && !data.voterNoteLabel.trim()
+        ? "姓名"
+        : data.voterNoteLabel.trim(),
+      rosterNames: data.roster,
     });
     const draw = await readDrawById(sql, key, id);
     if (!draw) throw new Error("创建失败");

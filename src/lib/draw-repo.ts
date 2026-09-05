@@ -14,6 +14,7 @@
 import { randomInt } from "node:crypto";
 // node --experimental-strip-types 直接加载本文件跑测试,相对导入要带 .ts。
 import { rememberVoterName } from "./poll-repo.ts";
+import { rosterExists, rosterHas, rosterTaken, setRoster } from "./roster.ts";
 
 export type DrawSlot = {
   id: string;
@@ -133,6 +134,8 @@ export type CreateDrawInput = {
   blankCount: number | null;
   /** 抽之前要求填写的提示(如「名字」);空或省略 = 不用填。 */
   voterNoteLabel?: string;
+  /** 名单核对:非空时仅名单内姓名可抽(以参与登记填写的姓名匹配)。 */
+  rosterNames?: string[];
 };
 
 export async function createDraw(
@@ -141,10 +144,15 @@ export async function createDraw(
   input: CreateDrawInput,
 ): Promise<string> {
   const id = crypto.randomUUID();
+  // 配了名单就必须记名 —— 没填提示时默认按「姓名」。
+  const noteLabel =
+    input.rosterNames && input.rosterNames.length > 0
+      ? input.voterNoteLabel?.trim() || "姓名"
+      : input.voterNoteLabel?.trim() ?? "";
   await sql.query(
     `insert into polls (id, question, creator_id, kind, voter_note_label)
      values ($1, $2, $3, 'draw', $4)`,
-    [id, input.title, creatorId, input.voterNoteLabel?.trim() ?? ""],
+    [id, input.title, creatorId, noteLabel],
   );
   let order = 0;
   for (const slot of input.slots) {
@@ -161,6 +169,9 @@ export async function createDraw(
        values ($1, $2, $3, $4, $5)`,
       [crypto.randomUUID(), id, input.blankLabel, order, input.blankCount ?? -1],
     );
+  }
+  if (input.rosterNames && input.rosterNames.length > 0) {
+    await setRoster(sql, id, input.rosterNames);
   }
   return id;
 }
@@ -270,6 +281,17 @@ export async function drawOne(
   const label = state.voterNoteLabel.trim();
   const note = voterNote.trim().slice(0, 40);
   if (label && !note) throw new Error(`请先填写${label}`);
+
+  // 名单核对:配了名单的抽签,只有名单内的姓名能抽,且每个姓名限一次。
+  if (await rosterExists(sql, pollId)) {
+    if (!note) throw new Error("请先填写姓名");
+    if (!(await rosterHas(sql, pollId, note))) {
+      throw new Error("姓名不在名单中");
+    }
+    if (await rosterTaken(sql, pollId, note)) {
+      throw new Error("该姓名已参与");
+    }
+  }
 
   const gate = await sql.query<{ voter_key: string }>(
     `insert into poll_ballots (poll_id, voter_key)

@@ -24,6 +24,8 @@ export function CreatePollForm() {
   const [options, setOptions] = useState(["拉面", "便当", "沙拉", ""]);
   const [askNote, setAskNote] = useState(false);
   const [noteLabel, setNoteLabel] = useState("名字");
+  const [rosterOn, setRosterOn] = useState(false);
+  const [rosterText, setRosterText] = useState("");
   const [choiceMode, setChoiceMode] = useState<"single" | "limited" | "unlimited">(
     "single",
   );
@@ -31,13 +33,20 @@ export function CreatePollForm() {
   const [includeWriteIn, setIncludeWriteIn] = useState(false);
   const [writeInLabel, setWriteInLabel] = useState("其他");
 
+  const rosterNames = rosterOn
+    ? rosterText
+        .split(/\r?\n|[，,、;；]/)
+        .map((name) => name.trim())
+        .filter(Boolean)
+    : [];
+
   const create = useMutation({
     mutationFn: () =>
       createLivePoll({
         data: {
           question,
           options: options.map((o) => o.trim()).filter(Boolean),
-          voterNoteLabel: askNote ? noteLabel.trim() : "",
+          voterNoteLabel: askNote || rosterOn ? noteLabel.trim() : "",
           maxChoices:
             choiceMode === "single"
               ? 1
@@ -45,6 +54,7 @@ export function CreatePollForm() {
                 ? 0
                 : Math.min(Math.max(choiceLimit, 2), optionCount),
           writeInLabel: includeWriteIn ? writeInLabel.trim() || "其他" : "",
+          roster: rosterNames,
         },
       }),
     onSuccess: (poll: LivePoll) => {
@@ -176,6 +186,55 @@ export function CreatePollForm() {
         ) : (
           <p className="text-xs text-muted">参与者直接选择即可。</p>
         )}
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>名单核对</Label>
+        <div className="flex flex-wrap gap-2">
+          <button
+            type="button"
+            className={
+              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+              (!rosterOn
+                ? "border-foreground text-foreground"
+                : "border-border text-muted hover:text-foreground")
+            }
+            onClick={() => setRosterOn(false)}
+          >
+            不使用名单
+          </button>
+          <button
+            type="button"
+            className={
+              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
+              (rosterOn
+                ? "border-foreground text-foreground"
+                : "border-border text-muted hover:text-foreground")
+            }
+            onClick={() => {
+              setRosterOn(true);
+              setAskNote(true);
+            }}
+          >
+            使用名单
+          </button>
+        </div>
+        {rosterOn ? (
+          <>
+            <textarea
+              value={rosterText}
+              rows={4}
+              maxLength={8000}
+              placeholder={"每行一个姓名，粘贴名单即可，如：\n张三\n李四\n王五"}
+              aria-label="名单"
+              className="min-h-24 w-full rounded-md border border-border bg-surface px-3 py-2 text-sm text-foreground outline-none transition-colors placeholder:text-subtle focus-visible:ring-2 focus-visible:ring-ring"
+              onChange={(e) => setRosterText(e.target.value)}
+            />
+            <p className="text-xs text-muted">
+              已识别 {rosterNames.length} 人。启用后仅名单内人员可参与，后台实时显示参与情况。
+            </p>
+          </>
+        ) : null}
       </div>
 
       <div className="flex flex-col gap-2">

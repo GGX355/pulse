@@ -9,6 +9,7 @@ import { fetchContentById } from "@/lib/draw-api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { LivePollView } from "@/components/poll/live-poll";
+import { RosterPanel } from "@/components/poll/roster-panel";
 import { SharePoll } from "@/components/poll/share-poll";
 
 export const Route = createFileRoute("/poll/$pollId")({
@@ -50,6 +51,12 @@ function PollDetailPage() {
         <LivePollView initialData={initialData.poll} pollId={pollId} />
       ) : null}
       <ClosePollButton pollId={pollId} />
+      <RosterPanel
+        pollId={pollId}
+        creatorId={
+          initialData?.kind === "poll" ? initialData.poll.creatorId : null
+        }
+      />
       <SharePoll />
     </>
   );

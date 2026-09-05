@@ -3,6 +3,8 @@
  * values, so the same rules run inside server functions and in node tests —
  * no framework, cookies or env access in here.
  */
+import { rosterExists, rosterHas, rosterTaken, setRoster } from "./roster.ts";
+
 export type PollOption = {
   id: string;
   label: string;
@@ -228,6 +230,7 @@ export async function createPoll(
   voterNoteLabel = "",
   maxChoices = 1,
   writeInLabel = "",
+  rosterNames: string[] = [],
 ): Promise<string> {
   const id = crypto.randomUUID();
   await sql.query(
@@ -249,6 +252,9 @@ export async function createPoll(
        values ($1, $2, $3, $4, true)`,
       [crypto.randomUUID(), id, fill, labels.length],
     );
+  }
+  if (rosterNames.length > 0) {
+    await setRoster(sql, id, rosterNames);
   }
   return id;
 }
@@ -315,6 +321,17 @@ export async function castVote(
   const asks = pollAsksForNote(live.voterNoteLabel);
   const note = asks ? voterNote.trim() : "";
   if (asks && !note) throw new Error(`请先填写${live.voterNoteLabel.trim()}`);
+
+  // 名单核对:配了名单的投票,只有名单内的姓名能参与,且每个姓名限一次。
+  if (await rosterExists(sql, live.id)) {
+    if (!note) throw new Error("请先填写姓名");
+    if (!(await rosterHas(sql, live.id, note))) {
+      throw new Error("姓名不在名单中");
+    }
+    if (await rosterTaken(sql, live.id, note)) {
+      throw new Error("该姓名已参与");
+    }
+  }
 
   const wanted = [
     ...new Set((Array.isArray(optionId) ? optionId : [optionId]).filter(Boolean)),

@@ -220,6 +220,14 @@ export function LivePollView({
         })}
       </div>
 
+      {vote.isError ? (
+        <p className="form-error text-sm text-muted">
+          {vote.error instanceof Error && vote.error.message
+            ? vote.error.message
+            : "提交失败，请重试"}
+        </p>
+      ) : null}
+
       {needsConfirm && !hasVoted && !poll.closed ? (
         <Button
           type="button"

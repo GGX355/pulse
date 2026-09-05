@@ -10,6 +10,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { DrawView } from "@/lib/draw-repo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { RosterPanel } from "@/components/poll/roster-panel";
 
 /**
  * The draw experience, blind by default: before you draw there are no numbers
@@ -221,6 +222,7 @@ export function DrawView({
       )}
 
       <DrawAdminPanel pollId={pollId} creatorId={draw.creatorId} />
+      <RosterPanel pollId={pollId} creatorId={draw.creatorId} />
     </section>
   );
 }
