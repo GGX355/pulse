@@ -50,6 +50,8 @@ export function CreateDrawForm() {
   const [blankMode, setBlankMode] = useState<BlankMode>("none");
   const [blankLabel, setBlankLabel] = useState("未中");
   const [blankCount, setBlankCount] = useState("10");
+  const [askName, setAskName] = useState(false);
+  const [noteLabel, setNoteLabel] = useState("名字");
   const [error, setError] = useState<string | null>(null);
 
   function setSlot(index: number, patch: Partial<SlotRow>) {
@@ -70,6 +72,7 @@ export function CreateDrawForm() {
           blankMode,
           blankLabel: blankLabel.trim(),
           blankCount: Math.max(1, parseInt(blankCount, 10) || 1),
+          voterNoteLabel: askName ? noteLabel.trim() : "",
         },
       }),
     onSuccess: (draw) => {
@@ -231,6 +234,49 @@ export function CreateDrawForm() {
               />
             ) : null}
           </div>
+        ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Label>抽之前要填写吗</Label>
+        <div className="flex flex-wrap gap-2">
+          {(
+            [
+              [false, "不用填"],
+              [true, "要填写"],
+            ] as const
+          ).map(([value, label]) => (
+            <button
+              key={String(value)}
+              type="button"
+              onClick={() => setAskName(value)}
+              className={cn(
+                "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
+                askName === value
+                  ? "border-accent/40 bg-surface-2 text-foreground"
+                  : "border-border text-muted hover:text-foreground",
+              )}
+            >
+              {label}
+            </button>
+          ))}
+        </div>
+        {askName ? (
+          <div className="flex items-center gap-2">
+            <Input
+              value={noteLabel}
+              maxLength={20}
+              placeholder="提示文案,如「名字」"
+              aria-label="填写提示"
+              onChange={(e) => setNoteLabel(e.target.value)}
+              className="flex-1"
+            />
+          </div>
+        ) : null}
+        {askName ? (
+          <p className="text-xs text-subtle">
+            每个人抽之前要先填这一项(一般写名字),名单里就能对上人。
+          </p>
         ) : null}
       </div>
 

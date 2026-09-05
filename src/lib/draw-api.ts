@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { readPoll, type LivePoll } from "./poll-repo";
+import { readPoll, seedIfEmpty, type LivePoll } from "./poll-repo";
 import {
   createDraw,
   drawAdminStats,
@@ -10,8 +10,10 @@ import {
   drawOne,
   drawToView,
   listDraws,
+  listDrawsAdmin,
   readDrawById,
   type DrawAdminStats,
+  type DrawAdminSummary,
   type DrawClaim,
   type DrawPoll,
   type DrawSummary,
@@ -26,6 +28,7 @@ export type {
   DrawSummary,
   DrawView,
 } from "./draw-repo";
+export type { DrawAdminSummary } from "./draw-repo";
 
 const VOTER_COOKIE = "pulse_vk";
 const VOTER_MAX_AGE = 60 * 60 * 24 * 400;
@@ -95,6 +98,43 @@ export const fetchDrawList = createServerFn({ method: "GET" }).handler(
   },
 );
 
+/** 后台抽签列表:进行中也带真实人数,仅登录后台可见。 */
+export const fetchDrawListAdmin = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .handler(async (): Promise<DrawAdminSummary[]> => {
+    const sql = await getDb();
+    return listDrawsAdmin(sql);
+  });
+
+/**
+ * 主页内容:两种内容里最新发布的那一个 —— 抽签或投票,谁新显示谁。
+ * 空库时先播种示例投票,保证首页永远有东西。
+ */
+export const fetchHomeContent = createServerFn({ method: "GET" }).handler(
+  async (): Promise<PollContent> => {
+    const sql = await getDb();
+    const key = voterKey();
+    const latest = async () =>
+      sql.query<{ id: string; kind: string }>(
+        `select id, kind from polls order by created_at desc limit 1`,
+      );
+    let rows = await latest();
+    if (!rows[0]) {
+      await seedIfEmpty(sql);
+      rows = await latest();
+    }
+    const row = rows[0];
+    if (!row) throw new Error("还没有内容");
+    if (row.kind === "draw") {
+      const draw = await readDrawById(sql, key, row.id);
+      if (draw) return { kind: "draw", draw: drawToView(draw) };
+    }
+    const poll = await readPoll(sql, key, row.id);
+    if (poll) return { kind: "poll", poll };
+    throw new Error("还没有内容");
+  },
+);
+
 /** 发起人专属的实时后台:全量数字 + 兑奖名单,一次拉齐。 */
 export const fetchDrawAdmin = createServerFn({ method: "POST" })
   .middleware([authMiddleware])
@@ -122,6 +162,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
         blankMode: z.enum(["count", "unlimited", "none"]),
         blankLabel: z.string().trim().max(10),
         blankCount: z.number().int().min(1).max(99999),
+        voterNoteLabel: z.string().trim().max(20),
       })
       .refine(
         (data) =>
@@ -143,6 +184,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
       blankLabel:
         data.blankMode === "none" ? null : data.blankLabel.trim() || "未中",
       blankCount: data.blankMode === "count" ? data.blankCount : null,
+      voterNoteLabel: data.voterNoteLabel,
     });
     const draw = await readDrawById(sql, key, id);
     if (!draw) throw new Error("创建失败");
@@ -150,12 +192,18 @@ export const createDrawLive = createServerFn({ method: "POST" })
   });
 
 export const drawLiveOnce = createServerFn({ method: "POST" })
-  .validator(z.object({ pollId: z.string().min(1) }))
+  .validator(
+    z.object({
+      pollId: z.string().min(1),
+      /** 抽之前要求填写的那条信息(通常就是名字)。 */
+      note: z.string().trim().max(40).optional(),
+    }),
+  )
   .handler(async ({ data }): Promise<DrawView> => {
     const sql = await getDb();
     const key = voterKey();
     // 抽完 myDraw 必有值 → drawToView 返回的是全量揭示视图。
-    return drawToView(await drawOne(sql, key, data.pollId));
+    return drawToView(await drawOne(sql, key, data.pollId, data.note ?? ""));
   });
 
 export const listDrawClaims = createServerFn({ method: "POST" })

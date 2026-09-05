@@ -39,7 +39,7 @@ export function VoterRoster() {
       <div>
         <h2 className="font-display text-lg font-semibold tracking-tight">参与者</h2>
         <p className="mt-1 text-xs text-muted">
-          投票时写过名字的人。只有你在后台能看见。
+          按浏览器 Cookie 记的人:投票/抽签时写过名字就会归到这里,只有后台能看见。
         </p>
       </div>
       {rows.length === 0 ? (
@@ -53,7 +53,7 @@ export function VoterRoster() {
             >
               <span className="font-medium text-foreground">{row.displayName}</span>
               <span className="shrink-0 text-xs text-muted">
-                {row.pollCount} 场 · {formatWhen(row.updatedAtMs)}
+                参与 {row.pollCount} 场 · {formatWhen(row.updatedAtMs)}
               </span>
             </li>
           ))}

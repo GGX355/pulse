@@ -9,6 +9,7 @@ import {
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type { DrawView } from "@/lib/draw-repo";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 
 /**
  * The draw experience, blind by default: before you draw there are no numbers
@@ -38,6 +39,8 @@ export function DrawView({
 
   const [spinning, setSpinning] = useState(false);
   const [rollLabel, setRollLabel] = useState("");
+  // 抽之前要填的那条信息(通常就是名字);服务端会再校验一次。
+  const [note, setNote] = useState(initialData.myNote ?? "");
   const rollTimer = useRef<number | null>(null);
   useEffect(() => {
     return () => {
@@ -46,7 +49,8 @@ export function DrawView({
   }, []);
 
   const drawMut = useMutation({
-    mutationFn: () => drawLiveOnce({ data: { pollId } }),
+    mutationFn: () =>
+      drawLiveOnce({ data: { pollId, note: note.trim() || undefined } }),
     onSuccess: (result) => {
       queryClient.setQueryData(contentKey, result);
       // Keep the roll running a beat past the server answer, then land.
@@ -124,7 +128,30 @@ export function DrawView({
           </p>
         ) : (
           <>
-            <Button size="lg" disabled={drawMut.isPending} onClick={startDraw}>
+            {initialData.blind && initialData.voterNoteLabel ? (
+              <div className="flex w-full max-w-xs flex-col gap-1.5">
+                <Input
+                  value={note}
+                  maxLength={40}
+                  placeholder={`请填写${initialData.voterNoteLabel}`}
+                  aria-label={initialData.voterNoteLabel}
+                  onChange={(e) => setNote(e.target.value)}
+                />
+                <p className="text-center text-xs text-subtle">
+                  抽之前要先写{initialData.voterNoteLabel},会跟结果一起记名。
+                </p>
+              </div>
+            ) : null}
+            <Button
+              size="lg"
+              disabled={
+                drawMut.isPending ||
+                (initialData.blind &&
+                  Boolean(initialData.voterNoteLabel) &&
+                  !note.trim())
+              }
+              onClick={startDraw}
+            >
               {drawMut.isPending ? "抽取中…" : "抽一次"}
             </Button>
             <p className="text-xs text-muted">
@@ -133,7 +160,11 @@ export function DrawView({
           </>
         )}
         {drawMut.isError ? (
-          <p className="form-error text-sm text-muted">没抽成,再试一次。</p>
+          <p className="form-error text-sm text-muted">
+            {drawMut.error instanceof Error && drawMut.error.message
+              ? drawMut.error.message
+              : "没抽成,再试一次。"}
+          </p>
         ) : null}
       </div>
 
@@ -234,7 +265,7 @@ function DrawAdminPanel({
     if (!claims.data) return;
     const lines = claims.data.map(
       (claim, index) =>
-        `${index + 1}\t${new Date(claim.drewAtMs).toLocaleString("zh-CN")}\t${claim.voterMasked}\t${claim.label}`,
+        `${index + 1}\t${new Date(claim.drewAtMs).toLocaleString("zh-CN")}\t${claim.voterName ?? claim.voterMasked}\t${claim.label}`,
     );
     void navigator.clipboard
       .writeText(["时间\t抽签人\t结果", ...lines].join("\n"))
@@ -316,8 +347,11 @@ function DrawAdminPanel({
                   minute: "2-digit",
                   second: "2-digit",
                 })}
-                <span className="ml-2" suppressHydrationWarning>
-                  {claim.voterMasked}
+                <span
+                  className="ml-2 font-medium text-foreground"
+                  suppressHydrationWarning
+                >
+                  {claim.voterName ?? claim.voterMasked}
                 </span>
               </span>
               <span className="font-medium text-foreground">{claim.label}</span>

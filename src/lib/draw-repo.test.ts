@@ -294,4 +294,44 @@ describe("draw-repo(内存 PGlite 集成)", () => {
     const pollId = await createPoll(sql, "午饭吃什么？", ["拉面", "便当"]);
     await assert.rejects(() => drawAdminStats(sql, pollId, "user-42"), /没有这个抽签/);
   });
+
+  it("抽前记名:要求填写时没填会被拒,填了写入票面和名册", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", {
+      ...A_B_BLANK,
+      voterNoteLabel: "姓名",
+    });
+
+    await assert.rejects(
+      () => drawOne(sql, "device-a", id, ""),
+      /请先填写姓名/,
+    );
+
+    const drawn = await drawOne(sql, "device-a", id, "小明");
+    assert.ok(drawn.myDraw);
+    assert.equal(drawn.myNote, "小明");
+
+    // 名单里是名字,不是打码 key;名册也按 Cookie 记住了这个人。
+    const claims = await drawClaimList(sql, id, "user-42");
+    assert.equal(claims.length, 1);
+    assert.equal(claims[0].voterName, "小明");
+
+    const { listVoterProfiles } = await import("./poll-repo.ts");
+    const roster = await listVoterProfiles(sql);
+    assert.ok(roster.some((row) => row.displayName === "小明"));
+  });
+
+  it("不要求记名:直接就能抽,名单回退到打码 key", async () => {
+    const sql = await makeSql();
+    const id = await createDraw(sql, "user-42", A_B_BLANK);
+
+    const drawn = await drawOne(sql, "device-b", id);
+    assert.ok(drawn.myDraw);
+    assert.equal(drawn.voterNoteLabel, "");
+
+    const claims = await drawClaimList(sql, id, "user-42");
+    assert.equal(claims.length, 1);
+    assert.equal(claims[0].voterName, null);
+    assert.equal(claims[0].voterMasked.length, 7);
+  });
 });

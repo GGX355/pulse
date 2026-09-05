@@ -12,6 +12,8 @@
  * double draws impossible, and a lost race there reverts the claim.
  */
 import { randomInt } from "node:crypto";
+// node --experimental-strip-types 直接加载本文件跑测试,相对导入要带 .ts。
+import { rememberVoterName } from "./poll-repo.ts";
 
 export type DrawSlot = {
   id: string;
@@ -35,6 +37,10 @@ export type DrawPoll = {
   /** 有限签全部抽完且没有不限量兜底 —— 再来人无签可抽。 */
   allTaken: boolean;
   creatorId: string | null;
+  /** 抽之前要求填写的提示(如「名字」);空 = 不用填。 */
+  voterNoteLabel: string;
+  /** 我抽之前填的那条信息(通常就是名字);没填为 null。 */
+  myNote: string | null;
 };
 
 export type Sql = {
@@ -58,6 +64,10 @@ type DrawViewBase = {
   /** 有限签全部抽完且没有不限量兜底。盲选态也保留:抽满与否必须告诉人。 */
   allTaken: boolean;
   creatorId: string | null;
+  /** 抽之前要求填写的提示;空 = 不用填。 */
+  voterNoteLabel: string;
+  /** 我自己填过的那条信息(盲选时也要带回,输入框才能预填)。 */
+  myNote: string | null;
 };
 
 /** 盲选态:抽之前 —— 只有签位名字,没有数字,也没有"我抽到了什么"。 */
@@ -86,6 +96,8 @@ export function drawToView(draw: DrawPoll): DrawView {
     closed: draw.closed,
     allTaken: draw.allTaken,
     creatorId: draw.creatorId,
+    voterNoteLabel: draw.voterNoteLabel,
+    myNote: draw.myNote,
   };
   if (draw.closed || draw.myDraw) {
     return {
@@ -119,6 +131,8 @@ export type CreateDrawInput = {
   blankLabel: string | null;
   /** 未中数量;null = 不限量。仅在 blankLabel 非空时生效。 */
   blankCount: number | null;
+  /** 抽之前要求填写的提示(如「名字」);空或省略 = 不用填。 */
+  voterNoteLabel?: string;
 };
 
 export async function createDraw(
@@ -128,8 +142,9 @@ export async function createDraw(
 ): Promise<string> {
   const id = crypto.randomUUID();
   await sql.query(
-    `insert into polls (id, question, creator_id, kind) values ($1, $2, $3, 'draw')`,
-    [id, input.title, creatorId],
+    `insert into polls (id, question, creator_id, kind, voter_note_label)
+     values ($1, $2, $3, 'draw', $4)`,
+    [id, input.title, creatorId, input.voterNoteLabel?.trim() ?? ""],
   );
   let order = 0;
   for (const slot of input.slots) {
@@ -160,8 +175,10 @@ export async function readDrawById(
     question: string;
     creator_id: string | null;
     closed: boolean;
+    voter_note_label: string;
   }>(
-    `select id, question, creator_id, (closed_at is not null) as closed
+    `select id, question, creator_id, (closed_at is not null) as closed,
+            voter_note_label
      from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
@@ -180,8 +197,8 @@ export async function readDrawById(
     [pollId],
   );
 
-  const mine = await sql.query<{ option_id: string; label: string }>(
-    `select v.option_id, o.label
+  const mine = await sql.query<{ option_id: string; label: string; voter_note: string }>(
+    `select v.option_id, o.label, v.voter_note
      from poll_votes v join poll_options o on o.id = v.option_id
      where v.poll_id = $1 and v.voter_key = $2
      limit 1`,
@@ -214,6 +231,8 @@ export async function readDrawById(
     closed: Boolean(poll.closed),
     allTaken: !hasUnlimited && finiteExhausted,
     creatorId: poll.creator_id,
+    voterNoteLabel: poll.voter_note_label.trim(),
+    myNote: mine[0]?.voter_note.trim() || null,
   };
 }
 
@@ -222,6 +241,10 @@ export async function readDrawById(
  * tickets (不限量兜底签的权重 = 有限签剩余总和:有限签先派完,未中兜底),
  * claimed atomically, recorded, then re-read so the response is the true
  * post-draw state. Drawing again simply returns your existing result.
+ *
+ * `voterNote` is the self-entered line (usually the person's name) required
+ * when the draw sets a voterNoteLabel — it rides on poll_votes.voter_note and
+ * also lands in voter_profiles so the admin roster knows this cookie by name.
  *
  * Per-voter uniqueness rides the `poll_ballots` primary key (poll_id,
  * voter_key) — the same one-submission-per-person primitive the multi-choice
@@ -236,12 +259,17 @@ export async function drawOne(
   sql: Sql,
   key: string,
   pollId: string,
+  voterNote = "",
 ): Promise<DrawPoll> {
   let state = await readDrawById(sql, key, pollId);
   if (!state) throw new Error("没有这个抽签");
   if (state.closed) throw new Error("抽签已结束");
   if (state.myDraw) return state;
   if (state.allTaken) throw new Error("已经抽完了");
+
+  const label = state.voterNoteLabel.trim();
+  const note = voterNote.trim().slice(0, 40);
+  if (label && !note) throw new Error(`请先填写${label}`);
 
   const gate = await sql.query<{ voter_key: string }>(
     `insert into poll_ballots (poll_id, voter_key)
@@ -303,10 +331,13 @@ export async function drawOne(
       }
 
       await sql.query(
-        `insert into poll_votes (id, poll_id, option_id, voter_key)
-         values ($1, $2, $3, $4)`,
-        [crypto.randomUUID(), pollId, pick.id, key],
+        `insert into poll_votes (id, poll_id, option_id, voter_key, voter_note)
+         values ($1, $2, $3, $4, $5)`,
+        [crypto.randomUUID(), pollId, pick.id, key, note],
       );
+      if (note) {
+        await rememberVoterName(sql, key, note);
+      }
 
       const done = await readDrawById(sql, key, pollId);
       if (!done) throw new Error("抽签失败");
@@ -320,10 +351,11 @@ export async function drawOne(
   }
 }
 
-/** 兑奖名单上的一个人;voter_key 打码,发起人也看不到完整身份。 */
+/** 兑奖名单上的一个人;没留名时 voterName 为 null(前端回退到打码 key)。 */
 export type DrawClaim = {
   label: string;
   voterMasked: string;
+  voterName: string | null;
   drewAtMs: number;
 };
 
@@ -347,11 +379,15 @@ export async function drawClaimList(
   const rows = await sql.query<{
     label: string;
     voter_key: string;
+    voter_note: string;
+    display_name: string | null;
     drew_at_ms: number;
   }>(
-    `select o.label, v.voter_key,
+    `select o.label, v.voter_key, v.voter_note, p.display_name,
             (extract(epoch from v.created_at) * 1000)::bigint as drew_at_ms
-     from poll_votes v join poll_options o on o.id = v.option_id
+     from poll_votes v
+     join poll_options o on o.id = v.option_id
+     left join voter_profiles p on p.voter_key = v.voter_key
      where v.poll_id = $1
      order by v.created_at asc`,
     [pollId],
@@ -359,6 +395,7 @@ export async function drawClaimList(
   return rows.map((row) => ({
     label: row.label,
     voterMasked: maskKey(row.voter_key),
+    voterName: row.voter_note.trim() || row.display_name?.trim() || null,
     drewAtMs: Number(row.drew_at_ms),
   }));
 }
@@ -374,33 +411,81 @@ export type DrawSummary = {
 };
 
 export async function listDraws(sql: Sql, limit = 50): Promise<DrawSummary[]> {
-  const rows = await sql.query<{
-    id: string;
-    question: string;
-    closed: boolean;
-    total: number | null;
-    created_ms: number;
-  }>(
+  const rows = await listDrawRows(sql, limit, false);
+  return rows.map(mapSummary);
+}
+
+/** 后台版:进行中的抽签也带真实人数 —— 只有发起人的后台会调。 */
+export type DrawAdminSummary = {
+  id: string;
+  title: string;
+  closed: boolean;
+  allTaken: boolean;
+  totalTaken: number;
+  voterNoteLabel: string;
+  createdAtMs: number;
+};
+
+export async function listDrawsAdmin(
+  sql: Sql,
+  limit = 50,
+): Promise<DrawAdminSummary[]> {
+  const rows = await listDrawRows(sql, limit, true);
+  return rows.map((row) => ({
+    id: row.id,
+    title: row.question,
+    closed: Boolean(row.closed),
+    allTaken: Boolean(row.all_taken),
+    totalTaken: Number(row.total),
+    voterNoteLabel: row.voter_note_label.trim(),
+    createdAtMs: Number(row.created_ms),
+  }));
+}
+
+type DrawRow = {
+  id: string;
+  question: string;
+  closed: boolean;
+  total: number | null;
+  all_taken: boolean;
+  voter_note_label: string;
+  created_ms: number;
+};
+
+async function listDrawRows(
+  sql: Sql,
+  limit: number,
+  admin: boolean,
+): Promise<DrawRow[]> {
+  return sql.query<DrawRow>(
     `select p.id, p.question,
             (p.closed_at is not null) as closed,
-            case when p.closed_at is not null then count(v.id)::int else null end as total,
+            ${admin ? "count(v.id)::int" : "case when p.closed_at is not null then count(v.id)::int else null end"} as total,
+            (select bool_and(o.slot_count <> -1) and bool_and(o.taken >= o.slot_count)
+             from poll_options o
+             where o.poll_id = p.id and o.slot_count <> -1
+             having count(*) filter (where o.slot_count <> -1) > 0) as all_taken,
+            p.voter_note_label,
             (extract(epoch from p.created_at) * 1000)::bigint as created_ms
      from polls p
      left join poll_options o on o.poll_id = p.id
      left join poll_votes v on v.option_id = o.id
      where p.kind = 'draw'
-     group by p.id, p.question, p.created_at, p.closed_at
+     group by p.id, p.question, p.created_at, p.closed_at, p.voter_note_label
      order by p.created_at desc
      limit $1`,
     [limit],
   );
-  return rows.map((row) => ({
+}
+
+function mapSummary(row: DrawRow): DrawSummary {
+  return {
     id: row.id,
     title: row.question,
     closed: Boolean(row.closed),
     total: row.total === null ? null : Number(row.total),
     createdAtMs: Number(row.created_ms),
-  }));
+  };
 }
 
 /** 发起人后台的一行统计:每个签位的真实数字,随时可看,盲选不影响。 */
