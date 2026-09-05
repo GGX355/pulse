@@ -29,7 +29,7 @@ export function SharePoll() {
   }
 
   return (
-    <section className="mt-10 rounded-xl border border-border bg-surface p-4">
+    <section className="mt-10 animate-in rounded-xl border border-border bg-surface p-4 fill-mode-both fade-in slide-in-from-bottom-3 duration-500">
       <p className="text-xs font-medium tracking-wide text-muted">分享这场投票</p>
       <div className="mt-3 flex items-center gap-4">
         {qr ? (
@@ -38,7 +38,7 @@ export function SharePoll() {
             alt="投票链接二维码"
             width={96}
             height={96}
-            className="size-24 rounded-lg bg-white p-1"
+            className="size-24 animate-in rounded-lg bg-white p-1 fade-in duration-500"
           />
         ) : (
           <div className="size-24 animate-pulse rounded-lg bg-surface-2" />

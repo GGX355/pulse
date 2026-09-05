@@ -122,7 +122,17 @@ export function CreatePollForm() {
       ) : null}
 
       <Button type="submit" disabled={create.isPending || filled.length < 2 || !question.trim()}>
-        {create.isPending ? "发布中…" : "发布到现场"}
+        {create.isPending ? (
+          <>
+            <span
+              aria-hidden
+              className="size-3.5 animate-spin rounded-full border border-current border-t-transparent"
+            />
+            发布中…
+          </>
+        ) : (
+          "发布到现场"
+        )}
       </Button>
     </form>
   );

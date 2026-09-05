@@ -101,7 +101,14 @@ function AuthForm({ onDone }: { onDone: () => void }) {
         </p>
       </div>
 
-      <div className="flex gap-2" role="tablist">
+      <div className="relative grid grid-cols-2 rounded-full border border-border bg-surface p-1">
+        <span
+          aria-hidden
+          className={
+            "absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-full bg-surface-2 transition-transform duration-250 ease-out " +
+            (mode === "signup" ? "translate-x-[calc(100%+8px)]" : "translate-x-0")
+          }
+        />
         {(
           [
             ["signin", "登录"],
@@ -118,10 +125,8 @@ function AuthForm({ onDone }: { onDone: () => void }) {
               setError(null);
             }}
             className={
-              "h-9 rounded-full border px-4 text-sm touch-manipulation " +
-              (mode === value
-                ? "border-accent/40 bg-surface-2 text-foreground"
-                : "border-border text-muted hover:text-foreground")
+              "relative z-10 h-9 rounded-full text-sm touch-manipulation transition-colors duration-200 " +
+              (mode === value ? "text-foreground" : "text-muted hover:text-foreground")
             }
           >
             {label}
@@ -167,10 +172,22 @@ function AuthForm({ onDone }: { onDone: () => void }) {
         />
       </div>
 
-      {error ? <p className="text-sm text-muted">{error}</p> : null}
+      {error ? <p className="form-error text-sm text-muted">{error}</p> : null}
 
       <Button type="submit" disabled={pending || !email.trim() || !password}>
-        {pending ? "请稍候…" : mode === "signin" ? "登录" : "注册并登录"}
+        {pending ? (
+          <>
+            <span
+              aria-hidden
+              className="size-3.5 animate-spin rounded-full border border-current border-t-transparent"
+            />
+            请稍候…
+          </>
+        ) : mode === "signin" ? (
+          "登录"
+        ) : (
+          "注册并登录"
+        )}
       </Button>
     </form>
   );

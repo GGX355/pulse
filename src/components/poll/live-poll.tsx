@@ -6,6 +6,7 @@ import {
   fetchPollById,
   type LivePoll,
 } from "@/lib/poll-api";
+import { useCountUp } from "@/lib/use-count-up";
 import { OptionRow } from "@/components/poll/option-row";
 import { Button } from "@/components/ui/button";
 
@@ -63,6 +64,7 @@ export function LivePollView({
   pollId?: string;
 }) {
   const { poll, isError, vote } = useLivePoll(pollId, initialData);
+  const total = useCountUp(poll?.total ?? 0);
 
   if (isError) {
     return (
@@ -80,14 +82,19 @@ export function LivePollView({
   }
 
   return (
-    <section className="flex flex-col gap-6">
+    <section
+      className={`flex flex-col gap-6${poll.closed ? " poll-closed" : ""}`}
+    >
       <div>
-        <p className="text-xs font-medium tracking-wide text-muted">现场问题</p>
+        <p className="text-xs font-medium tracking-wide text-muted">
+          现场问题
+        </p>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
           {poll.question}
+          {poll.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
         </h1>
         <p className="mt-2 text-sm tabular-nums text-muted">
-          共 {poll.total} 票
+          共 {total} 票
           {poll.closed
             ? " · 已结束,感谢参与"
             : poll.votedId

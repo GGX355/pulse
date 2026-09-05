@@ -62,7 +62,7 @@ export function SiteShell({
             })}
             {live ? (
               <Badge className="ml-1 border-accent/30 text-accent">
-                <span className="size-1.5 rounded-full bg-accent" />
+                <span className="live-dot size-1.5 rounded-full bg-accent" />
                 LIVE
               </Badge>
             ) : null}

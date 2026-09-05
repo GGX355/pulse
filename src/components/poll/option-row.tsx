@@ -1,4 +1,6 @@
+import { useEffect, useRef } from "react";
 import type { PollOption } from "@/lib/poll-api";
+import { useCountUp } from "@/lib/use-count-up";
 import { cn } from "@/lib/utils";
 
 export function OptionRow({
@@ -20,6 +22,14 @@ export function OptionRow({
   const locked = Boolean(votedId);
   const scale = total > 0 ? option.votes / total : 0;
   const pct = total > 0 ? Math.round((option.votes / total) * 100) : 0;
+  const votes = useCountUp(option.votes);
+
+  // A one-shot "+1" whenever live polling brings this row new votes.
+  const prevVotes = useRef(option.votes);
+  const gained = option.votes > prevVotes.current;
+  useEffect(() => {
+    prevVotes.current = option.votes;
+  }, [option.votes]);
 
   return (
     <label
@@ -49,8 +59,13 @@ export function OptionRow({
             <span className="poll-picked text-xs text-accent">已选择</span>
           ) : null}
         </span>
-        <span className="shrink-0 text-right tabular-nums text-sm text-muted">
-          <span className="block text-foreground">{option.votes}</span>
+        <span className="relative shrink-0 text-right tabular-nums text-sm text-muted">
+          {gained ? (
+            <span key={option.votes} className="vote-float" aria-hidden>
+              +1
+            </span>
+          ) : null}
+          <span className="block text-foreground">{votes}</span>
           <span className="text-xs">{pct}%</span>
         </span>
       </span>

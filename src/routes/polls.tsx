@@ -44,15 +44,21 @@ function PollsPage() {
               key={poll.id}
               to="/poll/$pollId"
               params={{ pollId: poll.id }}
-              className="flex items-center justify-between gap-3 py-4 touch-manipulation"
+              className="flex animate-in items-center justify-between gap-3 py-4 fill-mode-both touch-manipulation fade-in slide-in-from-bottom-2 duration-500 hover:opacity-80"
+              style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
             >
               <span className="min-w-0">
                 <span className="flex items-center gap-2">
                   <span className="truncate font-medium text-foreground">
                     {poll.question}
                   </span>
-                  {index === 0 ? (
+                  {poll.closed ? (
+                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
+                      已结束
+                    </span>
+                  ) : index === 0 ? (
                     <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
+                      <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
                       现场中
                     </span>
                   ) : null}
