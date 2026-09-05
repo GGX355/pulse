@@ -48,6 +48,18 @@
     cursor: pointer;
   }
 
+  /* 中文排版:标题多行时断行均衡;段落行高放宽、避免孤字尾行。 */
+  h1,
+  h2,
+  h3 {
+    text-wrap: balance;
+  }
+
+  p {
+    line-height: 1.75;
+    text-wrap: pretty;
+  }
+
   ::selection {
     background: color-mix(in oklab, var(--color-foreground) 22%, transparent);
   }
