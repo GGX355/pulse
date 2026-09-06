@@ -7,10 +7,15 @@ import {
   listDrawClaims,
 } from "@/lib/draw-api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
-import type { DrawView } from "@/lib/draw-repo";
+import type {
+  DrawRevealedView,
+  DrawSlot,
+  DrawView,
+} from "@/lib/draw-repo";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RosterPanel } from "@/components/poll/roster-panel";
+import { jelly } from "@/lib/motion";
 
 /**
  * The draw experience, blind by default: before you draw there are no numbers
@@ -42,6 +47,13 @@ export function DrawView({
   const [rollLabel, setRollLabel] = useState("");
   // 抽之前要填的那条信息(通常就是名字);服务端会再校验一次。
   const [note, setNote] = useState(initialData.myNote ?? "");
+  // 揭晓演出:结果落定后先翻「我的卡」,再切全场结果。
+  const [wallRevealed, setWallRevealed] = useState(!initialData.blind);
+  const [flipping, setFlipping] = useState(false);
+  const [mySlotId, setMySlotId] = useState<string | null>(
+    initialData.myDraw?.slotId ?? null,
+  );
+  const heroRef = useRef<HTMLDivElement | null>(null);
   const rollTimer = useRef<number | null>(null);
   useEffect(() => {
     return () => {
@@ -54,14 +66,21 @@ export function DrawView({
       drawLiveOnce({ data: { pollId, note: note.trim() || undefined } }),
     onSuccess: (result) => {
       queryClient.setQueryData(contentKey, result);
-      // Keep the roll running a beat past the server answer, then land.
-      rollTimer.current = window.setTimeout(() => {
-        if (rollTimer.current && typeof rollTimer.current === "number") {
-          window.clearInterval(rollTimer.current);
-          rollTimer.current = null;
-        }
-        setSpinning(false);
-      }, 1100);
+      // 结果一到就停住快滚,让「我的卡」翻面;稍后切全场结果并给面板一个果冻。
+      if (rollTimer.current && typeof rollTimer.current === "number") {
+        window.clearInterval(rollTimer.current);
+        rollTimer.current = null;
+      }
+      setSpinning(false);
+      if (result.blind === false && result.myDraw) {
+        setMySlotId(result.myDraw.slotId);
+        setFlipping(true);
+        window.setTimeout(() => {
+          setFlipping(false);
+          setWallRevealed(true);
+          jelly(heroRef.current);
+        }, 1000);
+      }
     },
     onError: () => {
       if (rollTimer.current && typeof rollTimer.current === "number") {
@@ -91,6 +110,13 @@ export function DrawView({
 
   const revealed = !draw.blind;
   const myLabel = draw.myDraw?.label ?? null;
+  const showWall = !revealed && !wallRevealed;
+  // 翻面演出的一秒钟里,运行时已是全量数据,但类型上仍是盲选视图
+  const resultSlots: DrawSlot[] = draw.blind
+    ? wallRevealed
+      ? (draw as unknown as DrawRevealedView).slots
+      : []
+    : draw.slots;
 
   const status = draw.closed
     ? "已结束"
@@ -111,7 +137,10 @@ export function DrawView({
         <p className="mt-2 text-sm tabular-nums text-muted">{status}</p>
       </div>
 
-      <div className="flex min-h-44 flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface p-6 text-center">
+      <div
+        ref={heroRef}
+        className="flex min-h-44 flex-col items-center justify-center gap-3 rounded-xl border border-border bg-surface p-6 text-center"
+      >
         {spinning ? (
           <span className="animate-pulse font-display text-4xl font-semibold tracking-tight text-foreground">
             {rollLabel}
@@ -167,24 +196,35 @@ export function DrawView({
         ) : null}
       </div>
 
-      {draw.blind ? (
+      {showWall && draw.blind ? (
         <div className="draw-blind-grid">
-          {draw.slots.map((slot, index) => (
-            <div
-              key={slot.id}
-              className="draw-blind-card"
-              style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
-            >
-              <span className="block truncate font-medium text-foreground">
-                {slot.label}
-              </span>
-            </div>
-          ))}
+          {draw.slots.map((slot, index) => {
+            const mine = mySlotId === slot.id;
+            return (
+              <div
+                key={slot.id}
+                className={
+                  "draw-blind-card" + (mine && flipping ? " is-flipping" : "")
+                }
+                style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
+              >
+                <div className="dc-face dc-front">
+                  <span className="block truncate font-medium text-foreground">
+                    {slot.label}
+                  </span>
+                </div>
+                <div className="dc-face dc-back">
+                  <span className="dc-back-label">你抽到了</span>
+                  <span className="dc-back-value">{slot.label}</span>
+                </div>
+              </div>
+            );
+          })}
         </div>
       ) : (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">抽取结果</p>
-          {draw.slots.map((slot) => {
+          {resultSlots.map((slot) => {
             const fill =
               slot.count === -1 ? 0 : slot.count > 0 ? slot.taken / slot.count : 0;
             const isMine = draw.myDraw?.slotId === slot.id;

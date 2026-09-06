@@ -1,46 +1,132 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* ═══════════════════════════════════════════════════════════════
+   Pulse 设计系统 · Liquid Glass（苹果液态玻璃）
+   依据：Apple HIG（字阶/间距/触控）+ WWDC25 三层模型
+   （highlight / shadow / illumination）。通用模板见
+   github.com/GGX355/liquid-glass-template
+   ─────────────────────────────────────────────────────────────
+   机制：Tailwind v4 工具类引用 --color-* 变量，因此双主题只需
+   在 html[data-theme="dark"] 下重定义这些变量，全站自动换肤。
+   ═══════════════════════════════════════════════════════════════ */
+
+/* ── HIG 设计令牌 ── */
+:root {
+  /* 字阶：Large Title 34 / Title 22 / Headline 17 / Body 17 /
+     Subhead 15 / Footnote 13 / Caption 12 */
+  --fs-large-title: 34px;
+  --fs-title: 22px;
+  --fs-headline: 17px;
+  --fs-body: 17px;
+  --fs-subhead: 15px;
+  --fs-footnote: 13px;
+  --fs-caption: 12px;
+  /* 间距：8pt 网格；圆角三档；触控目标 */
+  --sp-1: 8px; --sp-2: 12px; --sp-3: 16px; --sp-4: 20px; --sp-5: 24px;
+  --r-sm: 12px; --r-md: 20px; --r-lg: 28px; --r-pill: 999px;
+  --touch: 44px;
+}
+
 @theme {
-  --color-bg: #0c0d10;
-  --color-surface: #14151a;
-  --color-surface-2: #1c1d23;
-  --color-foreground: #e8e6df;
-  --color-muted: #8a8c93;
-  --color-subtle: #6a6c73;
-  --color-primary: #d8d6cf;
-  --color-primary-foreground: #0c0d10;
-  --color-accent: #b8bcc4;
-  --color-border: #26272d;
-  --color-ring: #b8bcc4;
-  --color-fill: color-mix(in oklab, var(--color-accent) 22%, transparent);
-  --radius: 0.75rem;
-  --font-sans: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI",
+  /* 亮色（默认）— 玻璃调色板 */
+  --color-bg: #f2f6ff;
+  --color-surface: rgba(255, 255, 255, 0.42);
+  --color-surface-2: rgba(255, 255, 255, 0.6);
+  --color-foreground: #191a1f;
+  --color-muted: #565966;
+  --color-subtle: #9ba0af;
+  --color-primary: #0a84ff;
+  --color-primary-foreground: #ffffff;
+  --color-accent: #0066ff;
+  --color-border: rgba(19, 29, 60, 0.14);
+  --color-ring: #0066ff;
+  --color-fill: rgba(0, 102, 255, 0.14);
+  --radius: 1rem;
+  --font-sans: "SF Pro Display", "Inter", -apple-system, "PingFang SC",
+    "Hiragino Sans GB", "Noto Sans SC", "Microsoft YaHei", "Segoe UI",
     system-ui, sans-serif;
-  --font-display: "PingFang SC", "Hiragino Sans GB", "Noto Sans SC", "Segoe UI",
-    system-ui, sans-serif;
+  --font-display: var(--font-sans);
 
   /* Motion tokens — one vocabulary for every transition in the app. */
   --ease-out-expo: cubic-bezier(0.22, 1, 0.36, 1);
   --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
+/* ── 玻璃材质令牌（亮色默认） ── */
+:root {
+  --glass-bg: linear-gradient(180deg, rgba(255, 255, 255, 0.5), rgba(255, 255, 255, 0.28));
+  --glass-border: rgba(255, 255, 255, 0.55);
+  --glass-bf: blur(10px) saturate(195%) brightness(1.02);
+  --rim: 0 1px 2px rgba(20, 30, 60, 0.08), 0 8px 24px rgba(36, 46, 90, 0.14),
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.95),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.35),
+    inset 0 -14px 22px -18px rgba(30, 40, 80, 0.1),
+    inset 1.5px 1.5px 2px rgba(255, 3, 3, 0.05),
+    inset -1.5px -1.5px 2px rgba(0, 22, 255, 0.06);
+  --rim-sm: 0 1px 2px rgba(20, 30, 60, 0.06), 0 6px 18px rgba(36, 46, 90, 0.1),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.92),
+    inset 0 -10px 16px -14px rgba(30, 40, 80, 0.08);
+  --mover-bg: linear-gradient(135deg, rgba(255, 255, 255, 0.96), rgba(255, 255, 255, 0.74));
+  --mover-shadow: 0 3px 14px rgba(38, 48, 92, 0.18), inset 0 1px 1px #fff;
+  --glare: rgba(255, 255, 255, 0.38);
+  --bg-grad: linear-gradient(180deg, #f2f6ff 0%, #fff4fa 100%);
+  --o1: rgba(96, 140, 255, 0.6); --o2: rgba(255, 120, 185, 0.52);
+  --o3: rgba(80, 210, 175, 0.5); --o4: rgba(255, 168, 105, 0.55);
+  --o5: rgba(150, 110, 255, 0.5);
+  --grain-opacity: 0.5;
+}
+
+/* ── 暗色主题：近黑底 + 一主两辅柔光 + 白雾霜玻璃 ── */
+html[data-theme="dark"] {
+  color-scheme: dark;
+  --color-bg: #04050a;
+  --color-surface: rgba(52, 55, 74, 0.4);
+  --color-surface-2: rgba(74, 77, 100, 0.5);
+  --color-foreground: #e8e6df;
+  --color-muted: #bcbfd0;
+  --color-subtle: #71737f;
+  --color-primary: #6d9dff;
+  --color-primary-foreground: #061018;
+  --color-accent: #7fb3ff;
+  --color-border: rgba(255, 255, 255, 0.14);
+  --color-ring: #7fb3ff;
+  --color-fill: rgba(127, 179, 255, 0.22);
+  --glass-bg: linear-gradient(180deg, rgba(52, 55, 74, 0.5), rgba(30, 31, 46, 0.42));
+  --glass-border: rgba(255, 255, 255, 0.14);
+  --glass-bf: blur(10px) saturate(150%) brightness(1.12);
+  --rim: 0 1px 2px rgba(0, 0, 0, 0.4), 0 10px 28px rgba(0, 0, 0, 0.45),
+    inset 0 1.5px 0.5px rgba(255, 255, 255, 0.24),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.07),
+    inset 0 -14px 22px -18px rgba(0, 0, 0, 0.4),
+    inset 1.5px 1.5px 2px rgba(255, 3, 3, 0.03),
+    inset -1.5px -1.5px 2px rgba(0, 22, 255, 0.04);
+  --rim-sm: 0 1px 2px rgba(0, 0, 0, 0.35), 0 6px 18px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0.5px rgba(255, 255, 255, 0.2),
+    inset 0 -10px 16px -14px rgba(0, 0, 0, 0.35);
+  --mover-bg: linear-gradient(135deg, rgba(74, 77, 100, 0.95), rgba(48, 50, 68, 0.82));
+  --mover-shadow: 0 3px 14px rgba(0, 0, 0, 0.45), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  --glare: rgba(255, 255, 255, 0.13);
+  --bg-grad: linear-gradient(180deg, #07080d 0%, #040509 100%);
+  --o1: rgba(88, 96, 255, 0.26); --o2: rgba(160, 84, 255, 0.2);
+  --o3: rgba(40, 170, 240, 0.18); --o4: rgba(255, 150, 90, 0.1);
+  --o5: rgba(120, 80, 255, 0.24);
+  --grain-opacity: 0.32;
+}
+
 @layer base {
   html,
   body {
-    background: var(--color-bg);
     color: var(--color-foreground);
     font-family: var(--font-sans);
   }
 
-  /* A faint top light — keeps the flat dark ground from feeling dead. */
+  /* 背景交给 Aurora 层与垂直底色；玻璃的颜色来自这里 */
   body {
-    background-image: radial-gradient(
-      110% 55% at 50% 0%,
-      #15161d 0%,
-      var(--color-bg) 58%
-    );
+    background: var(--bg-grad);
+    background-attachment: fixed;
     background-repeat: no-repeat;
+    font-size: var(--fs-body);
   }
 
   button:not(:disabled),
@@ -61,7 +147,7 @@
   }
 
   ::selection {
-    background: color-mix(in oklab, var(--color-foreground) 22%, transparent);
+    background: color-mix(in oklab, var(--color-accent) 22%, transparent);
   }
 
   * {
@@ -82,19 +168,145 @@
   }
 }
 
-/* ── Poll option: the product's money shot ─────────────────────────────── */
+/* ── Aurora 流动色块层（玻璃的「内容」） ─────────────────────────── */
+
+.orbs {
+  position: fixed;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  animation: hueflow 18s ease-in-out infinite alternate;
+}
+.orbs i {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(90px);
+  transition: background 0.45s ease;
+}
+.o1 { width: 46vw; height: 46vw; background: var(--o1); top: -12%; left: -8%; animation: drift1 11s ease-in-out infinite alternate; }
+.o2 { width: 40vw; height: 40vw; background: var(--o2); top: -14%; right: -6%; animation: drift2 9s ease-in-out infinite alternate; }
+.o3 { width: 44vw; height: 44vw; background: var(--o3); bottom: -16%; left: 30%; animation: drift3 13s ease-in-out infinite alternate; }
+.o4 { width: 36vw; height: 36vw; background: var(--o4); bottom: -12%; left: -8%; animation: drift2 10s ease-in-out infinite alternate-reverse; }
+.o5 { width: 38vw; height: 38vw; background: var(--o5); top: 30%; right: -10%; animation: drift1 12s ease-in-out infinite alternate-reverse; }
+@keyframes drift1 { to { transform: translate(12vw, 9vh) scale(1.24); } }
+@keyframes drift2 { to { transform: translate(-11vw, 11vh) scale(0.82); } }
+@keyframes drift3 { to { transform: translate(9vw, -12vh) scale(1.16); } }
+@keyframes hueflow { from { filter: hue-rotate(-26deg); } to { filter: hue-rotate(26deg); } }
+html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
+@keyframes hueflowDark { from { filter: hue-rotate(-9deg); } to { filter: hue-rotate(13deg); } }
+
+/* ── 颗粒（消除色带 + 胶片感） ── */
+.grain {
+  position: fixed;
+  inset: 0;
+  z-index: 2;
+  pointer-events: none;
+  opacity: var(--grain-opacity);
+  mix-blend-mode: soft-light;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='240' height='240'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.55'/%3E%3C/svg%3E");
+}
+
+/* ── 液态玻璃材质 ─────────────────────────────────────────────── */
+
+.glass {
+  position: relative;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--rim);
+}
+.glass::after {
+  content: "";
+  position: absolute;
+  inset: 1px;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    320px circle at var(--gx, 28%) var(--gy, 18%),
+    var(--glare),
+    transparent 65%
+  );
+}
+
+/* 所有用 bg-surface/2 的面板自动获得玻璃雾面 */
+.bg-surface,
+.bg-surface-2 {
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+}
+
+/* ── 顶部悬浮玻璃药丸导航 ── */
+.nav-shell {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  border-radius: var(--r-pill);
+  padding: 5px;
+}
+.navmover {
+  position: absolute;
+  top: 5px;
+  bottom: 5px;
+  border-radius: var(--r-pill);
+  z-index: 0;
+  background: var(--mover-bg);
+  box-shadow: var(--mover-shadow);
+  transition:
+    left 0.42s cubic-bezier(0.3, 1.35, 0.4, 1),
+    width 0.42s cubic-bezier(0.3, 1.35, 0.4, 1);
+}
+.nav-link {
+  position: relative;
+  z-index: 1;
+  border-radius: var(--r-pill);
+  transition: color 0.25s ease, transform 0.5s cubic-bezier(0.28, 1.7, 0.4, 1);
+}
+.nav-link:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+.theme-btn {
+  position: relative;
+  z-index: 1;
+  border: none;
+  border-radius: var(--r-pill);
+  padding: 8px 12px;
+  cursor: pointer;
+  background: var(--mover-bg);
+  box-shadow: var(--mover-shadow);
+  color: var(--ink, var(--color-foreground));
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+  font-family: var(--font-sans);
+  transition: transform 0.5s cubic-bezier(0.28, 1.7, 0.4, 1);
+}
+.theme-btn:active {
+  transform: scale(0.92);
+  transition-duration: 0.08s;
+}
+
+/* ── Poll option: the product's money shot ─────────────────────── */
 
 .poll-option {
   position: relative;
   display: block;
   cursor: pointer;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: calc(var(--radius) + 4px);
-  background-color: var(--color-surface);
-  background-image: linear-gradient(var(--color-fill), var(--color-fill));
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  background-image:
+    linear-gradient(var(--color-fill), var(--color-fill)),
+    var(--glass-bg);
   background-repeat: no-repeat;
-  background-size: calc(var(--fill, 0) * 100%) 100%;
+  background-size:
+    calc(var(--fill, 0) * 100%) 100%,
+    100% 100%;
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  box-shadow: var(--rim-sm);
   padding: 14px 16px;
   transition:
     background-size 400ms var(--ease-out-expo),
@@ -105,17 +317,20 @@
 }
 
 .poll-option:hover {
-  border-color: color-mix(in oklab, var(--color-foreground) 22%, transparent);
+  border-color: color-mix(in oklab, var(--color-accent) 35%, var(--glass-border));
 }
 
 .poll-option:active:not(.is-locked) {
-  transform: scale(0.995);
+  transform: scale(0.965);
+  transition-duration: 0.08s;
 }
 
 .poll-option.is-mine,
 .poll-option:has(input:checked) {
-  border-color: color-mix(in oklab, var(--color-accent) 55%, transparent);
-  box-shadow: 0 0 0 1px color-mix(in oklab, var(--color-accent) 18%, transparent);
+  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--glass-border));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-accent) 16%, transparent),
+    var(--rim-sm);
 }
 
 /* One highlight sweep the moment this row becomes your pick. */
@@ -136,7 +351,7 @@
 }
 
 .poll-option.is-locked:not(.is-mine) {
-  opacity: 0.55;
+  opacity: 0.72;
 }
 
 .poll-option.is-locked {
@@ -162,7 +377,7 @@
   position: absolute;
   right: 0;
   top: 0;
-  font-size: 0.75rem;
+  font-size: var(--fs-caption);
   line-height: 1;
   color: var(--color-accent);
   pointer-events: none;
@@ -289,8 +504,8 @@
   }
 }
 
-/* ── Draw: blind cards ──────────────────────────────────────────────────
-   抽之前人人平等:只有签位名字,没有任何数字。问号徽标提醒这是盲选。 */
+/* ── Draw: blind cards（双面玻璃卡，可翻面揭晓） ─────────────────────
+   抽之前人人平等:只有签位名字,没有任何数字。自己抽中后卡面翻面。 */
 
 .draw-blind-grid {
   display: grid;
@@ -306,23 +521,16 @@
 
 .draw-blind-card {
   position: relative;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   min-height: 68px;
   overflow: hidden;
-  border: 1px solid var(--color-border);
-  border-radius: calc(var(--radius) + 2px);
-  background:
-    linear-gradient(
-      150deg,
-      color-mix(in oklab, var(--color-foreground) 7%, transparent),
-      transparent 45%,
-      color-mix(in oklab, var(--color-accent) 7%, transparent)
-    ),
-    var(--color-surface);
-  padding: 16px 14px;
-  text-align: center;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  box-shadow: var(--rim-sm);
+  transform-style: preserve-3d;
+  transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.05);
   animation: pop-in 420ms var(--ease-spring) both;
 }
 
@@ -340,6 +548,42 @@
   background-size: 240% 100%;
   animation: sweep 3.6s ease-in-out infinite;
   pointer-events: none;
+}
+
+/* 自己抽中后的翻面:注意 fill-mode 会压平 3D,翻面态必须清掉入场动画 */
+.draw-blind-card.is-flipping {
+  animation: none;
+  transform: rotateY(180deg);
+}
+
+.dc-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+  border-radius: inherit;
+  padding: 16px 14px;
+  text-align: center;
+}
+.dc-face.dc-back {
+  transform: rotateY(180deg);
+  flex-direction: column;
+  gap: 2px;
+}
+.dc-face.dc-back .dc-back-label {
+  font-size: var(--fs-caption);
+  color: var(--color-muted);
+}
+.dc-face.dc-back .dc-back-value {
+  font-family: var(--font-display);
+  font-weight: 600;
+  background: linear-gradient(120deg, var(--color-accent), #7d5aff 60%, #ff5f8f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
 }
 
 /* The system asks, the app obeys. */
