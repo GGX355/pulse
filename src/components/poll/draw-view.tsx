@@ -109,6 +109,9 @@ export function DrawView({
   }
 
   const wallRef = useRef<HTMLDivElement | null>(null);
+  // 每次抽完 +1:公示态 wallRevealed 初始即 true,抽完再 set 不产生变化,
+  // 仅靠它触发复位 effect 会失约——用 drewTick 兜住「值不变也要复位」。
+  const [drewTick, setDrewTick] = useState(0);
   useEffect(() => {
     if (!wallRevealed || !performingRef.current) return;
     performingRef.current = false;
@@ -121,7 +124,7 @@ export function DrawView({
         block: "start",
       });
     });
-  }, [wallRevealed]);
+  }, [wallRevealed, drewTick]);
 
   useEffect(() => {
     if (!performing) {
@@ -168,7 +171,10 @@ export function DrawView({
   const noteInputRef = useRef<HTMLInputElement | null>(null);
   const [noteNudge, setNoteNudge] = useState(false);
   const nudgeTimer = useRef<number | null>(null);
-  const noteRequired = Boolean(initialData.blind && initialData.voterNoteLabel);
+  const noteRequired = Boolean(
+    initialData.voterNoteLabel &&
+      (initialData.blind || initialData.resultsPublic),
+  );
   const noteMissing = noteRequired && !note.trim();
 
   // 没填名字就点卡/点开始:不静默忽略,抖动 + 聚焦输入框引导填写。
@@ -227,13 +233,17 @@ export function DrawView({
       if (myLabel === "一等奖") confetti(70);
       jelly(panelRef.current);
     }
-    window.setTimeout(() => setWallRevealed(true), prefersReduced ? 0 : 1600);
+    window.setTimeout(() => {
+      setWallRevealed(true);
+      setDrewTick((t) => t + 1);
+    }, prefersReduced ? 0 : 1600);
   }
 
   function canDraw() {
     return (
-      ui.blind &&
-      !wallRevealed &&
+      (ui.blind || ui.resultsPublic) &&
+      // 盲选态必须未开墙;公示态结果墙常开,不看 wallRevealed
+      (!ui.blind || !wallRevealed) &&
       !performing &&
       !drawMut.isPending &&
       !rolling &&
@@ -266,6 +276,7 @@ export function DrawView({
       }
       if (prefersReduced) {
         setWallRevealed(true);
+        setDrewTick((t) => t + 1);
         return;
       }
       setFlipping(true);
@@ -500,7 +511,13 @@ export function DrawView({
 
   // 舞台显隐只看盲选/收尾/结束三个状态;演出期间(performing)舞台必须
   // 保持可见——数据已被 ui 快照冻结,这里若再看 performing 会把动画拆掉。
-  const showInteractive = ui.blind && !wallRevealed && !closed;
+  // 公示进行中的抽签(blind=false 但未结束)参与者仍要能抽;公示态下已抽过
+  // 的人收起舞台只看结果墙,盲选态的原有显隐不受影响。
+  const showInteractive =
+    (ui.blind || ui.resultsPublic) &&
+    !closed &&
+    !(ui.blind && wallRevealed) &&
+    !(ui.resultsPublic && !ui.blind && initialData.myDraw);
   // 结果墙数据:轮询已揭晓用真数据;演出刚收尾、轮询还没回来时用服务端
   // 结果快照(revealSlots),永不拿盲选数据渲染数字。
   const wallSlots: DrawRevealedView["slots"] = revealed

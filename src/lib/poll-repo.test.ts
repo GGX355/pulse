@@ -26,6 +26,11 @@ const root = dirname(dirname(dirname(fileURLToPath(import.meta.url))));
 async function makeSql(): Promise<Sql> {
   const pg = new PGlite();
   await pg.waitReady;
+  // seedIfEmpty 把 seed:v1 记进 _migrations 防止复活;真实启动由 db.ts 建表,
+  // 测试夹具不走那条路,这里补上同一张表。
+  await pg.exec(
+    "create table if not exists _migrations (name text primary key, applied_at timestamptz not null default now())",
+  );
   const migrationsDir = join(root, "migrations");
   const files = (await readdir(migrationsDir))
     .filter((name) => name.endsWith(".sql"))

@@ -12,6 +12,7 @@ import {
 import { useCountUp } from "@/lib/use-count-up";
 import { OptionRow } from "@/components/poll/option-row";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
+import { DeadlineCapsule } from "@/components/poll/deadline-capsule";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -114,6 +115,7 @@ export function LivePollView({
   const total = useCountUp(poll?.total ?? 0);
   const asksForNote = Boolean(poll?.voterNoteLabel.trim());
   const hasVoted = Boolean(poll && (poll.votedIds?.length ?? 0) > 0);
+  const deadlinePassed = Boolean(poll?.deadlinePassed);
   const filledNote = (hasVoted ? (poll?.myNote ?? "") : note).trim();
   const needsNote = Boolean(asksForNote && poll && !hasVoted && !poll.closed);
   const multiple = Boolean(poll && (poll.maxChoices === 0 || poll.maxChoices > 1));
@@ -122,7 +124,11 @@ export function LivePollView({
     ? effectiveMaxChoices(poll.maxChoices, poll.options.length)
     : 1;
   const canVote = Boolean(
-    poll && !poll.closed && !hasVoted && (!asksForNote || filledNote),
+    poll &&
+      !poll.closed &&
+      !deadlinePassed &&
+      !hasVoted &&
+      (!asksForNote || filledNote),
   );
   const pickingWriteIn = Boolean(
     writeInOption && picked.includes(writeInOption.id),
@@ -184,15 +190,20 @@ export function LivePollView({
         {poll.description ? (
           <p className="content-desc mt-2">{poll.description}</p>
         ) : null}
+        {poll.closesAt && !poll.closed && !poll.deadlinePassed ? (
+          <DeadlineCapsule closesAt={poll.closesAt} />
+        ) : null}
         <p className="mt-2 text-sm tabular-nums text-muted">
           共 {total} 票
           {poll.closed
             ? " · 已结束"
-            : hasVoted
-              ? ` · 你投了 ${poll.votedIds.length} 项`
-              : multiple
-                ? ` · 最多选 ${cap} 项`
-                : ""}
+            : deadlinePassed
+              ? " · 已过截止时间"
+              : hasVoted
+                ? ` · 你投了 ${poll.votedIds.length} 项`
+                : multiple
+                  ? ` · 最多选 ${cap} 项`
+                  : ""}
         </p>
       </div>
 

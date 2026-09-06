@@ -1164,3 +1164,82 @@ form.glass > *:nth-child(8) { animation-delay: 0.35s; }
   box-shadow: var(--mover-shadow);
   transition: transform 0.42s cubic-bezier(0.3, 1.35, 0.4, 1);
 }
+
+/* ═══════════════════════════════════════════════════════════════
+   美化系统:按 html[data-beaut-items] 分项启用,总开关关时全部回落。
+   美化1 渐变描边 / 美化3 空状态插画占位 / 美化5 光斑微动 / v6 丝滑强化
+   ═══════════════════════════════════════════════════════════════ */
+
+/* 美化1 渐变描边:选项卡外圈 1px 渐变环(双层背景,内层遮出内容区) */
+[data-beaut-items] .poll-option {
+  border: 1px solid transparent;
+  background-origin: border-box, border-box, padding-box, padding-box, padding-box;
+  background-clip: border-box, padding-box, padding-box, padding-box, padding-box;
+}
+[data-beaut-items] .poll-option {
+  background-image:
+    linear-gradient(var(--color-bg), var(--color-bg)),
+    linear-gradient(135deg, #67c2d4, #7d5aff 50%, #ff5f8f),
+    linear-gradient(155deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.02) 38%, rgba(255, 255, 255, 0.06) 100%),
+    linear-gradient(var(--color-fill), var(--color-fill)),
+    var(--glass-bg);
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    calc(var(--fill, 0) * 100%) 100%,
+    100% 100%;
+}
+[data-beaut-items] .poll-option:hover {
+  background-size:
+    100% 100%,
+    100% 100%,
+    100% 100%,
+    calc((var(--fill, 0) + 0.03) * 100%) 100%,
+    100% 100%;
+}
+
+/* 美化5 背景光斑微动:极缓漂移(尊重 reduced-motion) */
+[data-b5="1"] .orbs i {
+  animation:
+    drift 26s ease-in-out infinite alternate,
+    hueflow 32s ease-in-out infinite alternate;
+}
+[data-b5="1"] .orbs i:nth-child(2n) {
+  animation-duration: 34s, 28s;
+}
+
+/* v6 丝滑强化:全局过渡曲线更弹(仅 transform/opacity 类安全属性) */
+[data-beautify="v6"] .glass,
+[data-beautify="v6"] .btn,
+[data-beautify="v6"] .nav-link {
+  transition-timing-function: cubic-bezier(0.22, 1.35, 0.36, 1);
+}
+
+/* 美化3 空状态插画容器(组件内 SVG,此处只管显隐与入场) */
+[data-b3="1"] .empty-illustration {
+  display: block;
+  animation: fade-in 0.5s var(--ease-out-expo) both;
+}
+.empty-illustration {
+  display: none;
+}
+
+/* 美化4 倒计时胶囊(组件内渲染,样式统一) */
+.deadline-capsule {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 3px 12px;
+  border-radius: var(--r-pill);
+  border: 1px solid color-mix(in oklab, var(--color-accent) 35%, transparent);
+  background: var(--color-accent-quiet);
+  font-size: var(--fs-caption);
+  font-variant-numeric: tabular-nums;
+  color: var(--color-accent);
+}
+.deadline-capsule .urgent {
+  color: #ff5f8f;
+  font-weight: 700;
+}

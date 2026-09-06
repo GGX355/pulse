@@ -40,6 +40,10 @@ export type LivePoll = {
   myWriteIn: string | null;
   /** 标题下的可选备注;空 = 未填写(不渲染)。 */
   description: string;
+  /** 投票截止时间(毫秒);null = 未设定。到点自动截止。 */
+  closesAt: number | null;
+  /** 截止时间已过(即使发起人还没手动关闭)。 */
+  deadlinePassed: boolean;
 };
 
 /** How many options a voter may pick on this poll (at least 1). */
@@ -105,9 +109,12 @@ export async function readPoll(
         voter_note_label: string;
         max_choices: number;
         description: string;
+        closes_at: string | null;
+        deadline_passed: boolean;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
-                voter_note_label, max_choices, description
+                voter_note_label, max_choices, description, closes_at,
+                (closes_at is not null and closes_at < now()) as deadline_passed
          from polls where id = $1 limit 1`,
         [pollId],
       )
@@ -119,12 +126,15 @@ export async function readPoll(
         voter_note_label: string;
         max_choices: number;
         description: string;
+        closes_at: string | null;
+        deadline_passed: boolean;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
-                voter_note_label, max_choices, description
+                voter_note_label, max_choices, description, closes_at,
+                (closes_at is not null and closes_at < now()) as deadline_passed
          from polls
          where kind = 'poll'
-         order by (closed_at is null) desc, created_at desc
+         order by (coalesce(closed_at, closes_at) is null) desc, created_at desc
          limit 1`,
       );
   const poll = polls[0];
@@ -205,6 +215,10 @@ export async function readPoll(
     closed: Boolean(poll.closed),
     voterNoteLabel: poll.voter_note_label,
     myNote,
+    closesAt: poll.closes_at
+      ? new Date(poll.closes_at + "Z").getTime()
+      : null,
+    deadlinePassed: Boolean(poll.deadline_passed),
     myWriteIn,
   };
 }
@@ -253,12 +267,13 @@ export async function createPoll(
   writeInLabel = "",
   rosterNames: string[] = [],
   description = "",
+  closesAt: Date | null = null,
 ): Promise<string> {
   const id = crypto.randomUUID();
   await sql.query(
-    `insert into polls (id, question, creator_id, voter_note_label, max_choices, description)
-     values ($1, $2, $3, $4, $5, $6)`,
-    [id, question, creatorId ?? null, voterNoteLabel, maxChoices, description.trim()],
+    `insert into polls (id, question, creator_id, voter_note_label, max_choices, description, closes_at)
+     values ($1, $2, $3, $4, $5, $6, $7)`,
+    [id, question, creatorId ?? null, voterNoteLabel, maxChoices, description.trim(), closesAt],
   );
   for (let i = 0; i < labels.length; i += 1) {
     await sql.query(
@@ -340,7 +355,18 @@ export async function castVote(
 ): Promise<LivePoll> {
   const live = await readPoll(sql, key, pollId);
   if (!live) throw new Error("没有进行中的投票");
-  if (live.closed) throw new Error("投票已结束");
+  if (live.closed || live.deadlinePassed) {
+    throw new Error(
+      live.closesAt ? "投票已过截止时间" : "投票已结束",
+    );
+  }
+  if (
+    live.closesAt !== null &&
+    Date.now() > live.closesAt &&
+    !live.closed
+  ) {
+    throw new Error("投票已过截止时间");
+  }
   if (live.votedIds.length > 0) return live;
 
   const asks = pollAsksForNote(live.voterNoteLabel);
