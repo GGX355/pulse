@@ -174,6 +174,10 @@ export default defineConfig(({ command, isPreview }) => ({
       ? [
           nitro({
             preset: "vercel",
+            // 构建期为 public/ 产物生成 .gz/.br 预压缩版本(自托管与
+            // vite preview 的静态服务都会按 Accept-Encoding 直发,
+            // 主 JS 386KB → 119KB 传输)。
+            compressPublicAssets: true,
             // Auto-registers server/middleware/* (the PWA install page +
             // manifest + head-tag middleware). Nitro v3 defaults serverDir to
             // false, so removing this silently unwires /?install=1 on deploys.

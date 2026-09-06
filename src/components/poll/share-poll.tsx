@@ -1,4 +1,3 @@
-import QRCode from "qrcode";
 import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 
@@ -15,7 +14,9 @@ export function SharePoll() {
   useEffect(() => {
     const link = window.location.href;
     setUrl(link);
-    QRCode.toDataURL(link, { margin: 1, width: 320 })
+    // 二维码库仅在需要时拉起:不进首屏包。
+    void import("qrcode")
+      .then((mod) => mod.default.toDataURL(link, { margin: 1, width: 320 }))
       .then(setQr)
       .catch(() => setQr(null));
   }, []);
