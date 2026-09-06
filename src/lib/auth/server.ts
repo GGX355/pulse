@@ -107,7 +107,9 @@ const LOCAL_DEV_ORIGINS: string[] = [
 ];
 // 隧道/自托管预览:BETTER_AUTH_EXTRA_ORIGINS 里逗号分隔的额外信任来源
 // (完整 origin 或裸 host 均可),用于内网穿透域名下的登录。
-const extraOriginList = (env("BETTER_AUTH_EXTRA_ORIGINS") ?? "")
+const extraOriginList = (env("BETTER_AUTH_EXTRA_ORIGINS") ??
+  env("VITE_BETTER_AUTH_EXTRA_ORIGINS") ??
+  "")
   .split(/[,\s]+/)
   .filter(Boolean);
 

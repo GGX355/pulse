@@ -3,6 +3,32 @@ import { Link } from "@tanstack/react-router";
 import type { ReactNode } from "react";
 import { fetchPollList } from "@/lib/poll-api";
 import { fetchDrawListAdmin } from "@/lib/draw-api";
+import { useCanDelete, useDeleteContent } from "@/lib/content-admin";
+
+/** 行右侧的删除叉号(红色悬停,确认后删除)。 */
+function DeleteX({
+  onDelete,
+  label,
+}: {
+  onDelete: () => void;
+  label: string;
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={`删除${label}`}
+      title="删除"
+      className="shrink-0 rounded-full px-2 py-1 text-base leading-none text-subtle transition-colors hover:bg-red-500/10 hover:text-red-500"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        if (window.confirm(`确定删除「${label}」？删除后不可恢复。`)) onDelete();
+      }}
+    >
+      ✕
+    </button>
+  );
+}
 
 function formatDate(ms: number) {
   return new Date(ms).toLocaleString("zh-CN", {
@@ -66,6 +92,8 @@ export function PollsAdminList() {
     queryFn: () => fetchPollList(),
     refetchInterval: 3000,
   });
+  const del = useDeleteContent();
+  const canDelete = useCanDelete();
   const rows = polls.data ?? [];
 
   return (
@@ -78,19 +106,26 @@ export function PollsAdminList() {
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-md border border-border px-3">
           {rows.map((poll) => (
-            <Link
-              key={poll.id}
-              to="/poll/$pollId"
-              params={{ pollId: poll.id }}
-              className={rowClass}
-            >
-              <RowInner
-                title={poll.question}
-                when={poll.createdAtMs}
-                badge={poll.closed ? closedBadge : liveBadge}
-                right={`${poll.total} 票`}
-              />
-            </Link>
+            <div key={poll.id} className="flex items-center">
+              <Link
+                to="/poll/$pollId"
+                params={{ pollId: poll.id }}
+                className={rowClass + " min-w-0 flex-1"}
+              >
+                <RowInner
+                  title={poll.question}
+                  when={poll.createdAtMs}
+                  badge={poll.closed ? closedBadge : liveBadge}
+                  right={`${poll.total} 票`}
+                />
+              </Link>
+              {canDelete(poll.creatorId) ? (
+                <DeleteX
+                  label={poll.question}
+                  onDelete={() => del.mutate(poll.id)}
+                />
+              ) : null}
+            </div>
           ))}
         </div>
       )}
@@ -105,6 +140,8 @@ export function DrawsAdminList() {
     queryFn: () => fetchDrawListAdmin(),
     refetchInterval: 3000,
   });
+  const del = useDeleteContent();
+  const canDelete = useCanDelete();
   const rows = draws.data ?? [];
 
   return (
@@ -117,29 +154,36 @@ export function DrawsAdminList() {
       ) : (
         <div className="flex flex-col divide-y divide-border rounded-md border border-border px-3">
           {rows.map((draw) => (
-            <Link
-              key={draw.id}
-              to="/draw/$drawId"
-              params={{ drawId: draw.id }}
-              className={rowClass}
-            >
-              <RowInner
-                title={draw.title}
-                when={draw.createdAtMs}
-                badge={
-                  draw.closed ? (
-                    closedBadge
-                  ) : draw.allTaken ? (
-                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
-                      全部抽完
-                    </span>
-                  ) : (
-                    liveBadge
-                  )
-                }
-                right={`${draw.totalTaken} 人${draw.voterNoteLabel ? " · 记名" : ""}`}
-              />
-            </Link>
+            <div key={draw.id} className="flex items-center">
+              <Link
+                to="/draw/$drawId"
+                params={{ drawId: draw.id }}
+                className={rowClass + " min-w-0 flex-1"}
+              >
+                <RowInner
+                  title={draw.title}
+                  when={draw.createdAtMs}
+                  badge={
+                    draw.closed ? (
+                      closedBadge
+                    ) : draw.allTaken ? (
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
+                        全部抽完
+                      </span>
+                    ) : (
+                      liveBadge
+                    )
+                  }
+                  right={`${draw.totalTaken} 人${draw.voterNoteLabel ? " · 记名" : ""}`}
+                />
+              </Link>
+              {canDelete(draw.creatorId) ? (
+                <DeleteX
+                  label={draw.title}
+                  onDelete={() => del.mutate(draw.id)}
+                />
+              ) : null}
+            </div>
           ))}
         </div>
       )}

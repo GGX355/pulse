@@ -510,6 +510,8 @@ export type DrawSummary = {
   /** 已抽人数 —— 仅已结束后公开;进行中为 null(盲选)。 */
   total: number | null;
   createdAtMs: number;
+  /** 发起人;null = 建号系统之前的历史内容(登录者可清理)。 */
+  creatorId: string | null;
 };
 
 export async function listDraws(sql: Sql, limit = 50): Promise<DrawSummary[]> {
@@ -526,6 +528,7 @@ export type DrawAdminSummary = {
   totalTaken: number;
   voterNoteLabel: string;
   createdAtMs: number;
+  creatorId: string | null;
 };
 
 export async function listDrawsAdmin(
@@ -541,6 +544,7 @@ export async function listDrawsAdmin(
     totalTaken: Number(row.total),
     voterNoteLabel: row.voter_note_label.trim(),
     createdAtMs: Number(row.created_ms),
+    creatorId: row.creator_id,
   }));
 }
 
@@ -552,6 +556,7 @@ type DrawRow = {
   all_taken: boolean;
   voter_note_label: string;
   created_ms: number;
+  creator_id: string | null;
 };
 
 async function listDrawRows(
@@ -568,12 +573,13 @@ async function listDrawRows(
              where o.poll_id = p.id and o.slot_count <> -1
              having count(*) filter (where o.slot_count <> -1) > 0) as all_taken,
             p.voter_note_label,
-            (extract(epoch from p.created_at) * 1000)::bigint as created_ms
+            (extract(epoch from p.created_at) * 1000)::bigint as created_ms,
+            p.creator_id
      from polls p
      left join poll_options o on o.poll_id = p.id
      left join poll_votes v on v.option_id = o.id
      where p.kind = 'draw'
-     group by p.id, p.question, p.created_at, p.closed_at, p.voter_note_label
+     group by p.id, p.question, p.created_at, p.closed_at, p.voter_note_label, p.creator_id
      order by p.created_at desc
      limit $1`,
     [limit],
@@ -587,6 +593,7 @@ function mapSummary(row: DrawRow): DrawSummary {
     closed: Boolean(row.closed),
     total: row.total === null ? null : Number(row.total),
     createdAtMs: Number(row.created_ms),
+    creatorId: row.creator_id,
   };
 }
 

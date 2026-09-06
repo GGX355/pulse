@@ -2,7 +2,7 @@ import { createServerFn } from "@tanstack/react-start";
 import { getCookie, setCookie } from "@tanstack/react-start/server";
 import { z } from "zod";
 import { authMiddleware } from "@/lib/auth/middleware";
-import { readPoll, seedIfEmpty, type LivePoll } from "./poll-repo";
+import { deletePoll as deletePollRepo, readPoll, seedIfEmpty, type LivePoll } from "./poll-repo";
 import {
   createDraw,
   drawAdminStats,
@@ -213,6 +213,15 @@ export const drawLiveOnce = createServerFn({ method: "POST" })
     const key = voterKey();
     // 抽完 myDraw 必有值 → drawToView 返回的是全量揭示视图。
     return drawToView(await drawOne(sql, key, data.pollId, data.note ?? ""));
+  });
+
+/** 发起人删除历史(投票/抽签共表,级联清干净);无主历史登录者可清理。 */
+export const deleteContent = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ contentId: z.string().min(1) }))
+  .handler(async ({ data, context }): Promise<void> => {
+    const sql = await getDb();
+    await deletePollRepo(sql, data.contentId, context.userId);
   });
 
 export const listDrawClaims = createServerFn({ method: "POST" })

@@ -74,6 +74,8 @@ export type PollSummary = {
   closed: boolean;
   /** Epoch milliseconds — int8 comes back as number via the db type parsers. */
   createdAtMs: number;
+  /** 发起人;null = 建号系统之前的历史内容(登录者可清理)。 */
+  creatorId: string | null;
 };
 
 /** Admin-only roster row. Never includes voter_key. */
@@ -204,10 +206,19 @@ export async function readPoll(
 
 /** Create the demo poll once, so an empty database still shows something. */
 export async function seedIfEmpty(sql: Sql): Promise<void> {
+  // 一次性标记:管理员把内容全删光是有意为之,不再复活演示数据。
+  const seeded = await sql.query<{ n: number }>(
+    `select count(*)::int as n from _migrations where name = 'seed:v1'`,
+  );
+  if ((seeded[0]?.n ?? 0) > 0) return;
+
   const existing = await sql.query<{ n: number }>(
     `select count(*)::int as n from polls`,
   );
-  if ((existing[0]?.n ?? 0) > 0) return;
+  if ((existing[0]?.n ?? 0) > 0) {
+    await sql.query(`insert into _migrations (name) values ('seed:v1') on conflict (name) do nothing`);
+    return;
+  }
 
   // 固定 id + on conflict:两个并发首请求同时通过空库检查也不会 500,
   // 后到者静默让位。
@@ -223,6 +234,7 @@ export async function seedIfEmpty(sql: Sql): Promise<void> {
       [`${SEED_POLL_ID}-${i + 1}`, SEED_POLL_ID, SEED_OPTIONS[i], i],
     );
   }
+  await sql.query(`insert into _migrations (name) values ('seed:v1') on conflict (name) do nothing`);
 }
 
 /** Insert a poll and its options; returns the new poll id. */
@@ -280,16 +292,18 @@ export async function listPolls(
     total: number;
     closed: boolean;
     created_ms: number;
+    creator_id: string | null;
   }>(
     `select p.id, p.question, p.kind,
             count(v.id)::int as total,
             (p.closed_at is not null) as closed,
-            (extract(epoch from p.created_at) * 1000)::bigint as created_ms
+            (extract(epoch from p.created_at) * 1000)::bigint as created_ms,
+            p.creator_id
      from polls p
      left join poll_options o on o.poll_id = p.id
      left join poll_votes v on v.option_id = o.id
      ${where}
-     group by p.id, p.question, p.kind, p.created_at, p.closed_at
+     group by p.id, p.question, p.kind, p.created_at, p.closed_at, p.creator_id
      order by p.created_at desc
      limit $1`,
     params,
@@ -301,6 +315,7 @@ export async function listPolls(
     total: Number(row.total),
     closed: Boolean(row.closed),
     createdAtMs: Number(row.created_ms),
+    creatorId: row.creator_id,
   }));
 }
 
@@ -505,4 +520,25 @@ export async function closePoll(
     `update polls set closed_at = now() where id = $1 and closed_at is null`,
     [pollId],
   );
+}
+
+/**
+ * 删除一条历史(投票或抽签共表)。级联清掉选项/票/盲选闸门/名单。
+ * 只有发起人能删;建号系统之前的无主内容(null)允许任何登录者清理。
+ */
+export async function deletePoll(
+  sql: Sql,
+  pollId: string,
+  userId: string,
+): Promise<void> {
+  const rows = await sql.query<{ creator_id: string | null }>(
+    `select creator_id from polls where id = $1 limit 1`,
+    [pollId],
+  );
+  const poll = rows[0];
+  if (!poll) throw new Error("内容不存在");
+  if (poll.creator_id !== null && poll.creator_id !== userId) {
+    throw new Error("只有发起人能删除");
+  }
+  await sql.query(`delete from polls where id = $1`, [pollId]);
 }

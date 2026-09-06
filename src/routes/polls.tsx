@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { fetchPollList } from "@/lib/poll-api";
+import { useCanDelete, useDeleteContent } from "@/lib/content-admin";
 
 export const Route = createFileRoute("/polls")({
   loader: () => fetchPollList(),
@@ -18,6 +19,8 @@ function formatDate(ms: number) {
 function PollsPage() {
   const polls = Route.useLoaderData();
   const liveIndex = polls.findIndex((poll) => !poll.closed);
+  const canDelete = useCanDelete();
+  const del = useDeleteContent();
 
   return (
     <>
@@ -41,40 +44,57 @@ function PollsPage() {
       ) : (
         <div className="flex flex-col divide-y divide-border">
           {polls.map((poll, index) => (
-            <Link
-              key={poll.id}
-              to="/poll/$pollId"
-              params={{ pollId: poll.id }}
-              className="flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
-              style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
-            >
-              <span className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="truncate font-medium text-foreground">
-                    {poll.question}
+            <div key={poll.id} className="flex items-center">
+              <Link
+                to="/poll/$pollId"
+                params={{ pollId: poll.id }}
+                className="min-w-0 flex-1 flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
+                style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-foreground">
+                      {poll.question}
+                    </span>
+                    {poll.closed ? (
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
+                        已结束
+                      </span>
+                    ) : index === liveIndex ? (
+                      <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
+                        <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
+                        进行中
+                      </span>
+                    ) : null}
                   </span>
-                  {poll.closed ? (
-                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
-                      已结束
-                    </span>
-                  ) : index === liveIndex ? (
-                    <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
-                      <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-                      进行中
-                    </span>
-                  ) : null}
+                  <span
+                    className="mt-1 block text-xs tabular-nums text-muted"
+                    suppressHydrationWarning
+                  >
+                    {formatDate(poll.createdAtMs)}
+                  </span>
                 </span>
-                <span
-                  className="mt-1 block text-xs tabular-nums text-muted"
-                  suppressHydrationWarning
+                <span className="shrink-0 text-sm tabular-nums text-muted">
+                  {poll.total} 票
+                </span>
+              </Link>
+              {canDelete(poll.creatorId) ? (
+                <button
+                  type="button"
+                  aria-label={`删除${poll.question}`}
+                  title="删除"
+                  className="shrink-0 rounded-full px-2 py-1 text-base leading-none text-subtle transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (window.confirm(`确定删除「${poll.question}」？删除后不可恢复。`)) {
+                      del.mutate(poll.id);
+                    }
+                  }}
                 >
-                  {formatDate(poll.createdAtMs)}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm tabular-nums text-muted">
-                {poll.total} 票
-              </span>
-            </Link>
+                  ✕
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       )}

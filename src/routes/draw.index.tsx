@@ -1,5 +1,6 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { fetchDrawList } from "@/lib/draw-api";
+import { useCanDelete, useDeleteContent } from "@/lib/content-admin";
 
 export const Route = createFileRoute("/draw/")({
   loader: () => fetchDrawList(),
@@ -17,6 +18,8 @@ function formatDate(ms: number) {
 
 function DrawsPage() {
   const draws = Route.useLoaderData();
+  const canDelete = useCanDelete();
+  const del = useDeleteContent();
 
   return (
     <>
@@ -45,40 +48,57 @@ function DrawsPage() {
       ) : (
         <div className="flex flex-col divide-y divide-border">
           {draws.map((draw, index) => (
-            <Link
-              key={draw.id}
-              to="/draw/$drawId"
-              params={{ drawId: draw.id }}
-              className="flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
-              style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
-            >
-              <span className="min-w-0">
-                <span className="flex items-center gap-2">
-                  <span className="truncate font-medium text-foreground">
-                    {draw.title}
+            <div key={draw.id} className="flex items-center">
+              <Link
+                to="/draw/$drawId"
+                params={{ drawId: draw.id }}
+                className="min-w-0 flex-1 flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
+                style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
+              >
+                <span className="min-w-0">
+                  <span className="flex items-center gap-2">
+                    <span className="truncate font-medium text-foreground">
+                      {draw.title}
+                    </span>
+                    {draw.closed ? (
+                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
+                        已结束
+                      </span>
+                    ) : (
+                      <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
+                        <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
+                        进行中
+                      </span>
+                    )}
                   </span>
-                  {draw.closed ? (
-                    <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
-                      已结束
-                    </span>
-                  ) : (
-                    <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
-                      <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-                      进行中
-                    </span>
-                  )}
+                  <span
+                    className="mt-1 block text-xs tabular-nums text-muted"
+                    suppressHydrationWarning
+                  >
+                    {formatDate(draw.createdAtMs)}
+                  </span>
                 </span>
-                <span
-                  className="mt-1 block text-xs tabular-nums text-muted"
-                  suppressHydrationWarning
+                <span className="shrink-0 text-sm tabular-nums text-muted">
+                  {draw.total === null ? "保密" : `${draw.total} 人参与`}
+                </span>
+              </Link>
+              {canDelete(draw.creatorId) ? (
+                <button
+                  type="button"
+                  aria-label={`删除${draw.title}`}
+                  title="删除"
+                  className="shrink-0 rounded-full px-2 py-1 text-base leading-none text-subtle transition-colors hover:bg-red-500/10 hover:text-red-500"
+                  onClick={(e) => {
+                    e.preventDefault();
+                    if (window.confirm(`确定删除「${draw.title}」？删除后不可恢复。`)) {
+                      del.mutate(draw.id);
+                    }
+                  }}
                 >
-                  {formatDate(draw.createdAtMs)}
-                </span>
-              </span>
-              <span className="shrink-0 text-sm tabular-nums text-muted">
-                {draw.total === null ? "保密" : `${draw.total} 人参与`}
-              </span>
-            </Link>
+                  ✕
+                </button>
+              ) : null}
+            </div>
           ))}
         </div>
       )}
