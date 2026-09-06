@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
+import { SegmentToggle } from "@/components/ui/segment-toggle";
 
 type BlankMode = "count" | "unlimited" | "none";
 
@@ -231,29 +232,16 @@ export function CreateDrawForm() {
 
       <div className="flex flex-col gap-3">
         <Label>未中兜底</Label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["count", "固定数量"],
-              ["unlimited", "不限量"],
-              ["none", "不设置"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              onClick={() => setBlankMode(value)}
-              className={cn(
-                "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
-                blankMode === value
-                  ? "border-accent/40 bg-surface-2 text-foreground"
-                  : "border-border text-muted hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentToggle
+          ariaLabel="未中兜底"
+          value={blankMode}
+          onChange={(v) => setBlankMode(v as typeof blankMode)}
+          options={[
+            { value: "count", label: "固定数量" },
+            { value: "unlimited", label: "不限量" },
+            { value: "none", label: "不设置" },
+          ]}
+        />
         {blankMode !== "none" ? (
           <div className="flex items-center gap-2">
             <Input
@@ -280,28 +268,15 @@ export function CreateDrawForm() {
 
       <div className="flex flex-col gap-3">
         <Label>参与登记</Label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              [false, "不需要"],
-              [true, "需要填写"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={String(value)}
-              type="button"
-              onClick={() => setAskName(value)}
-              className={cn(
-                "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
-                askName === value
-                  ? "border-accent/40 bg-surface-2 text-foreground"
-                  : "border-border text-muted hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentToggle
+          ariaLabel="参与登记"
+          value={askName ? "on" : "off"}
+          onChange={(v) => setAskName(v === "on")}
+          options={[
+            { value: "off", label: "不需要" },
+            { value: "on", label: "需要填写" },
+          ]}
+        />
         {askName && !rosterOn ? (
           <div className="flex items-center gap-2">
             <Input
@@ -323,31 +298,19 @@ export function CreateDrawForm() {
 
       <div className="flex flex-col gap-3">
         <Label>名单核对</Label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              [false, "不使用名单"],
-              [true, "使用名单"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={String(value)}
-              type="button"
-              onClick={() => {
-                setRosterOn(value);
-                if (value) setAskName(true);
-              }}
-              className={cn(
-                "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
-                rosterOn === value
-                  ? "border-accent/40 bg-surface-2 text-foreground"
-                  : "border-border text-muted hover:text-foreground",
-              )}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentToggle
+          ariaLabel="名单核对"
+          value={rosterOn ? "on" : "off"}
+          onChange={(v) => {
+            const on = v === "on";
+            setRosterOn(on);
+            if (on) setAskName(true);
+          }}
+          options={[
+            { value: "off", label: "不使用名单" },
+            { value: "on", label: "使用名单" },
+          ]}
+        />
         {rosterOn ? (
           <>
             <textarea

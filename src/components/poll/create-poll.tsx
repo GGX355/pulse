@@ -7,6 +7,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { SegmentToggle } from "@/components/ui/segment-toggle";
 
 const TEMPLATES = [
   { name: "午饭", question: "午饭吃什么？", options: ["拉面", "便当", "沙拉", "随便"] },
@@ -141,35 +142,19 @@ export function CreatePollForm() {
 
       <div className="flex flex-col gap-2">
         <Label>参与登记</Label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={
-              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
-              (!askNote
-                ? "border-foreground text-foreground"
-                : "border-border text-muted hover:text-foreground")
-            }
-            onClick={() => setAskNote(false)}
-          >
-            不需要
-          </button>
-          <button
-            type="button"
-            className={
-              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
-              (askNote
-                ? "border-foreground text-foreground"
-                : "border-border text-muted hover:text-foreground")
-            }
-            onClick={() => {
-              setAskNote(true);
-              if (!noteLabel.trim()) setNoteLabel("名字");
-            }}
-          >
-            需要填写
-          </button>
-        </div>
+        <SegmentToggle
+          ariaLabel="参与登记"
+          value={askNote ? "on" : "off"}
+          onChange={(v) => {
+            const on = v === "on";
+            setAskNote(on);
+            if (on && !noteLabel.trim()) setNoteLabel("名字");
+          }}
+          options={[
+            { value: "off", label: "不需要" },
+            { value: "on", label: "需要填写" },
+          ]}
+        />
         {askNote ? (
           <>
             <div className="flex flex-wrap gap-2">
@@ -199,35 +184,19 @@ export function CreatePollForm() {
 
       <div className="flex flex-col gap-2">
         <Label>名单核对</Label>
-        <div className="flex flex-wrap gap-2">
-          <button
-            type="button"
-            className={
-              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
-              (!rosterOn
-                ? "border-foreground text-foreground"
-                : "border-border text-muted hover:text-foreground")
-            }
-            onClick={() => setRosterOn(false)}
-          >
-            不使用名单
-          </button>
-          <button
-            type="button"
-            className={
-              "h-9 rounded-full border px-3 text-sm touch-manipulation " +
-              (rosterOn
-                ? "border-foreground text-foreground"
-                : "border-border text-muted hover:text-foreground")
-            }
-            onClick={() => {
-              setRosterOn(true);
-              setAskNote(true);
-            }}
-          >
-            使用名单
-          </button>
-        </div>
+        <SegmentToggle
+          ariaLabel="名单核对"
+          value={rosterOn ? "on" : "off"}
+          onChange={(v) => {
+            const on = v === "on";
+            setRosterOn(on);
+            if (on) setAskNote(true);
+          }}
+          options={[
+            { value: "off", label: "不使用名单" },
+            { value: "on", label: "使用名单" },
+          ]}
+        />
         {rosterOn ? (
           <>
             <textarea
@@ -248,36 +217,23 @@ export function CreatePollForm() {
 
       <div className="flex flex-col gap-2">
         <Label>可选项数</Label>
-        <div className="flex flex-wrap gap-2">
-          {(
-            [
-              ["single", "单选"],
-              ["limited", "限项多选"],
-              ["unlimited", "不限项数"],
-            ] as const
-          ).map(([value, label]) => (
-            <button
-              key={value}
-              type="button"
-              className={
-                "h-9 rounded-full border px-3 text-sm touch-manipulation " +
-                (choiceMode === value
-                  ? "border-foreground text-foreground"
-                  : "border-border text-muted hover:text-foreground")
-              }
-              onClick={() => {
-                setChoiceMode(value);
-                if (value === "limited") {
-                  setChoiceLimit((n) =>
-                    Math.min(Math.max(n, 2), Math.max(optionCount, 2)),
-                  );
-                }
-              }}
-            >
-              {label}
-            </button>
-          ))}
-        </div>
+        <SegmentToggle
+          ariaLabel="可选项数"
+          value={choiceMode}
+          onChange={(v: string) => {
+            setChoiceMode(v as typeof choiceMode);
+            if (v === "limited") {
+              setChoiceLimit((n) =>
+                Math.min(Math.max(n, 2), Math.max(optionCount, 2)),
+              );
+            }
+          }}
+          options={[
+            { value: "single", label: "单选" },
+            { value: "limited", label: "限项多选" },
+            { value: "unlimited", label: "不限项数" },
+          ]}
+        />
         {choiceMode === "limited" ? (
           <>
             <Label htmlFor="choice-limit">选项上限</Label>
