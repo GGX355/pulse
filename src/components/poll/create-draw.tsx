@@ -67,6 +67,7 @@ export function CreateDrawForm() {
     "scratch",
     "grid",
   ]);
+  const [resultsPublic, setResultsPublic] = useState("off");
   const [error, setError] = useState<string | null>(null);
 
   function toggleRevealMode(id: RevealMode) {
@@ -110,6 +111,7 @@ export function CreateDrawForm() {
           voterNoteLabel: askName || rosterOn ? noteLabel.trim() : "",
           roster: rosterNames,
           revealModes,
+          resultsPublic: resultsPublic === "on",
         },
       }),
     onSuccess: (draw) => {
@@ -354,8 +356,23 @@ export function CreateDrawForm() {
           })}
         </div>
         <p className="text-xs text-subtle">
-          可多选，参与者任选其一揭晓；{revealModes.length > 1 ? `已选 ${revealModes.length} 种` : "只选一种时不显示切换条"}。
-          无论哪种方式，中奖概率完全一致（结果由服务端统一抽取，动画只是演出）。
+          可多选，参与者任选其一揭晓；已选 {revealModes.length} 种。 无论哪种方式，中奖概率完全一致（结果由服务端统一抽取，动画只是演出）。
+        </p>
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label>结果公示</Label>
+        <SegmentToggle
+          ariaLabel="结果公示"
+          value={resultsPublic}
+          onChange={(v) => setResultsPublic(v)}
+          options={[
+            { value: "off", label: "盲选（默认）" },
+            { value: "on", label: "公示结果" },
+          ]}
+        />
+        <p className="text-xs text-subtle">
+          公示后所有访客（无论是否已抽）都能看到各签抽取情况与公示名单；后台随时可再切换。
         </p>
       </div>
 

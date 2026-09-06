@@ -180,6 +180,8 @@ export type CreateDrawInput = {
   revealModes?: string[];
   /** 标题下的可选备注。 */
   description?: string;
+  /** 抽签结果是否向所有人公示;缺省不公示(盲选)。 */
+  resultsPublic?: boolean;
 };
 
 export async function createDraw(
@@ -195,8 +197,8 @@ export async function createDraw(
       : input.voterNoteLabel?.trim() ?? "";
   const modes = normalizeRevealModes(input.revealModes);
   await sql.query(
-    `insert into polls (id, question, creator_id, kind, voter_note_label, reveal_modes, description)
-     values ($1, $2, $3, 'draw', $4, $5, $6)`,
+    `insert into polls (id, question, creator_id, kind, voter_note_label, reveal_modes, description, results_public)
+     values ($1, $2, $3, 'draw', $4, $5, $6, $7)`,
     [
       id,
       input.title,
@@ -204,6 +206,7 @@ export async function createDraw(
       noteLabel,
       modes.length > 0 ? modes.join(",") : "flip,scratch,grid",
       input.description?.trim() ?? "",
+      input.resultsPublic === true,
     ],
   );
   let order = 0;

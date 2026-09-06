@@ -36,7 +36,7 @@ export function SegmentToggle({
     >
       <span
         aria-hidden
-        className="seg-mover pointer-events-none absolute inset-y-1 left-1 rounded-full"
+        className="segment-toggle-mover pointer-events-none absolute inset-y-1 left-1 rounded-full"
         style={{
           width: `calc((100% - 8px) / ${n})`,
           transform: `translateX(${index * 100}%)`,

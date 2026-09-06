@@ -172,6 +172,8 @@ export const createDrawLive = createServerFn({ method: "POST" })
         roster: z.array(z.string().trim().min(1).max(40)).max(500),
         // 标题下的可选备注。
         description: z.string().trim().max(120).optional(),
+        // 抽签结果是否向所有人公示(盲选 vs 公开);缺省不公示。
+        resultsPublic: z.boolean().optional(),
         // 揭晓方式:1-3 种,参与者只在被选中的方式里选;缺省三种全开。
         revealModes: z
           .array(z.enum(["flip", "scratch", "grid"]))
@@ -198,6 +200,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
       rosterNames: data.roster,
       revealModes: data.revealModes,
       description: data.description,
+      resultsPublic: data.resultsPublic === true,
     });
     const draw = await readDrawById(sql, key, id);
     if (!draw) throw new Error("创建失败");

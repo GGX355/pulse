@@ -1159,7 +1159,7 @@ form.glass > *:nth-child(7) { animation-delay: 0.3s; }
 form.glass > *:nth-child(8) { animation-delay: 0.35s; }
 
 /* 分段切换(表单内的玻璃药丸):滑块与导航药丸同材质同动效 */
-.seg-mover {
+.segment-toggle-mover {
   background: var(--mover-bg);
   box-shadow: var(--mover-shadow);
   transition: transform 0.42s cubic-bezier(0.3, 1.35, 0.4, 1);
