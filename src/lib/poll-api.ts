@@ -97,7 +97,7 @@ export const createLivePoll = createServerFn({ method: "POST" })
       data.roster.length > 0 && !data.voterNoteLabel.trim()
         ? "姓名"
         : data.voterNoteLabel.trim();
-    await createPoll(
+    const pollId = await createPoll(
       sql,
       data.question.trim(),
       labels,
@@ -107,7 +107,9 @@ export const createLivePoll = createServerFn({ method: "POST" })
       data.writeInLabel.trim(),
       data.roster,
     );
-    const poll = await readPoll(sql, key);
+    // 按刚创建的 id 读:不带 id 会读「最新进行中投票」,两管理员并发创建
+    // 时创建者可能被带到别人的投票。
+    const poll = await readPoll(sql, key, pollId);
     if (!poll) throw new Error("创建失败");
     return poll;
   });

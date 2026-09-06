@@ -167,14 +167,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
         blankCount: z.number().int().min(1).max(99999),
         voterNoteLabel: z.string().trim().max(20),
         roster: z.array(z.string().trim().min(1).max(40)).max(500),
-      })
-      .refine(
-        (data) =>
-          data.blankMode === "none" ||
-          data.blankLabel.length > 0 ||
-          data.slots.every(() => true),
-        { message: "未中签位需要一个文案" },
-      ),
+      }),
   )
   .handler(async ({ data, context }): Promise<DrawPoll> => {
     const sql = await getDb();

@@ -35,14 +35,9 @@ export const Route = createRootRoute({
     links: [
       { rel: "icon", type: "image/svg+xml", href: "/favicon.svg" },
       { rel: "stylesheet", href: appCss },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.cdnfonts.com/css/sf-pro-display",
-      },
-      {
-        rel: "stylesheet",
-        href: "https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap",
-      },
+      // 字体走系统栈(--font-sans 的 SF Pro/PingFang/雅黑回退链):
+      // 现场网络不可控,render-blocking 的第三方字体 CSS 在弱网/被墙
+      // 环境会卡死首屏。要恢复网页字体请用自托管 woff2。
       { rel: "manifest", href: "/__grok/manifest.webmanifest" },
       { rel: "apple-touch-icon", href: "/__grok/icon-180.png" },
     ],

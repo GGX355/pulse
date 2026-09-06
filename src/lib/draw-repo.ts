@@ -314,6 +314,16 @@ export async function drawOne(
     );
   };
 
+  // 认领闸门之后再复核一次结束状态:读状态与出签之间发起人可能刚好收工。
+  const still = await sql.query<{ closed: boolean }>(
+    `select (closed_at is not null) as closed from polls where id = $1 limit 1`,
+    [pollId],
+  );
+  if (still[0]?.closed) {
+    await release();
+    throw new Error("抽签已结束");
+  }
+
   try {
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const open = state.slots.filter(
@@ -357,6 +367,30 @@ export async function drawOne(
          values ($1, $2, $3, $4, $5)`,
         [crypto.randomUUID(), pollId, pick.id, key, note],
       );
+
+      // 名单复查(收窄并发窗口):两台设备同姓名同时抽签时,双方都能通过
+      // 前置的 rosterTaken 检查;写入后按「他人是否已用同一姓名」裁决,
+      // 后到者退签、退记录、退闸门。名单配了则 note 必非空(前面已校验)。
+      if (await rosterExists(sql, pollId)) {
+        const dupe = await sql.query<{ n: number }>(
+          `select count(*)::int as n from poll_votes
+           where poll_id = $1 and voter_note = $2 and voter_key <> $3`,
+          [pollId, note, key],
+        );
+        if ((dupe[0]?.n ?? 0) > 0) {
+          await sql.query(
+            `update poll_options set taken = taken - 1 where id = $1`,
+            [pick.id],
+          );
+          await sql.query(
+            `delete from poll_votes where poll_id = $1 and voter_key = $2`,
+            [pollId, key],
+          );
+          await release();
+          throw new Error("该姓名已参与");
+        }
+      }
+
       if (note) {
         await rememberVoterName(sql, key, note);
       }
@@ -392,7 +426,7 @@ export async function drawClaimList(
   userId: string,
 ): Promise<DrawClaim[]> {
   const polls = await sql.query<{ creator_id: string | null }>(
-    `select creator_id from polls where id = $1 limit 1`,
+    `select creator_id from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
   if (!polls[0]) throw new Error("没有这个抽签");

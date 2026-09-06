@@ -11,7 +11,6 @@ import type {
   DrawRevealedView,
   DrawView as DrawViewData,
 } from "@/lib/draw-repo";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RosterPanel } from "@/components/poll/roster-panel";
 import { cn } from "@/lib/utils";
@@ -22,8 +21,12 @@ import { jelly, confetti } from "@/lib/motion";
  * anywhere — no taken counts, no remaining, no total, just the slot names.
  * The reveal is theatrical and server-driven: whichever mode you pick
  * (flip / scratch / grid) fires the same drawLiveOnce and only stages how the
- * server's answer appears. Live refetch keeps the revealed state honest while
- * the crowd draws; the blind state barely changes, so it polls slowly.
+ * server's answer appears.
+ *
+ * 演出期间冻结实时刷新：动画进行中不应用 refetch 的揭示数据、也不发起新的
+ * 轮询（performing 状态），演出收尾（wallRevealed）后一次性追上现场——
+ * 否则快网下 0.7s 的翻面会被 1.5s 轮询的结果墙直接拆场，慢网下结果墙又
+ * 会拿盲选数据渲染出 undefined/undefined。
  */
 
 type Mode = "flip" | "scratch" | "grid";
@@ -33,6 +36,10 @@ const MODES: Array<{ id: Mode; label: string }> = [
   { id: "scratch", label: "✦ 刮奖" },
   { id: "grid", label: "▦ 九宫格" },
 ];
+
+const prefersReduced =
+  typeof matchMedia !== "undefined" &&
+  matchMedia("(prefers-reduced-motion: reduce)").matches;
 
 export function DrawView({
   initialData,
@@ -51,8 +58,6 @@ export function DrawView({
     refetchInterval: (q) => (q.state.data?.blind ? 4000 : 1500),
   });
   const draw = query.data ?? initialData;
-  // 盲选/揭晓两种视图的 slots 统一为 {id,label}
-  const slots: Array<{ id: string; label: string }> = draw.slots;
 
   // 揭晓演出状态:结果落定后先演动画,再切全场结果。
   const [mode, setMode] = useState<Mode>("flip");
@@ -63,7 +68,6 @@ export function DrawView({
   const [rollLabel, setRollLabel] = useState("");
   const [scratchLabel, setScratchLabel] = useState("");
   const [scratchReady, setScratchReady] = useState(false);
-  const [gridLit, setGridLit] = useState<number | null>(null);
   const [gridRolling, setGridRolling] = useState(false);
   const [gridWinLabel, setGridWinLabel] = useState<string | null>(null);
   const [gridDone, setGridDone] = useState(false);
@@ -73,10 +77,41 @@ export function DrawView({
   const segRef = useRef<HTMLDivElement | null>(null);
   const segMoverRef = useRef<HTMLSpanElement | null>(null);
   const rollTimer = useRef<number | null>(null);
+  const gridTimers = useRef<number[]>([]);
+
+  // 演出锁:进行中冻结轮询渲染(见文件头注释)。
+  const [performing, setPerforming] = useState(false);
+  const performingRef = useRef(false);
+  const blindSnapRef = useRef<DrawViewData>(initialData);
+  // 服务端结果(揭示视图)——演出结束前结果墙先用它,不等轮询。
+  const [revealSlots, setRevealSlots] = useState<DrawRevealedView["slots"] | null>(
+    null,
+  );
+
+  function startPerforming() {
+    performingRef.current = true;
+    blindSnapRef.current = draw;
+    setPerforming(true);
+  }
+
+  useEffect(() => {
+    if (wallRevealed && performingRef.current) {
+      performingRef.current = false;
+      setPerforming(false);
+    }
+  }, [wallRevealed]);
+
+  useEffect(() => {
+    if (!performing) {
+      void queryClient.invalidateQueries({ queryKey: contentKey });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [performing]);
 
   useEffect(() => {
     return () => {
       if (rollTimer.current) window.clearInterval(rollTimer.current);
+      gridTimers.current.forEach((id) => window.clearTimeout(id));
     };
   }, []);
 
@@ -100,6 +135,11 @@ export function DrawView({
     };
   }, [mode]);
 
+  // 演出用的盲选快照:动画期间 refetch 再快也不改舞台。
+  const ui: DrawViewData = performing ? (blindSnapRef.current ?? draw) : draw;
+  // 揭晓视图的签位(带 taken/count);盲选视图只有 {id,label}。
+  const slots: Array<{ id: string; label: string }> = ui.slots;
+
   const noteRequired = Boolean(initialData.blind && initialData.voterNoteLabel);
   const noteMissing = noteRequired && !note.trim();
 
@@ -107,7 +147,9 @@ export function DrawView({
     mutationFn: () =>
       drawLiveOnce({ data: { pollId, note: note.trim() || undefined } }),
     onSettled: () => {
-      void queryClient.invalidateQueries({ queryKey: contentKey });
+      if (!performingRef.current) {
+        void queryClient.invalidateQueries({ queryKey: contentKey });
+      }
     },
   });
 
@@ -117,6 +159,7 @@ export function DrawView({
       const result = await drawMut.mutateAsync();
       if (result.blind === false && result.myDraw) {
         setMySlotId(result.myDraw.slotId);
+        setRevealSlots(result.slots);
         return result;
       }
       return null;
@@ -144,57 +187,58 @@ export function DrawView({
   }
 
   function finishReveal(myLabel: string) {
-    if (myLabel === "一等奖") confetti(70);
-    jelly(panelRef.current);
-    window.setTimeout(() => setWallRevealed(true), 900);
+    if (!prefersReduced) {
+      if (myLabel === "一等奖") confetti(70);
+      jelly(panelRef.current);
+    }
+    window.setTimeout(() => setWallRevealed(true), prefersReduced ? 0 : 1600);
   }
 
   function canDraw() {
     return (
-      draw.blind &&
+      ui.blind &&
       !wallRevealed &&
+      !performing &&
       !drawMut.isPending &&
       !rolling &&
       !flipping &&
       !scratchReady &&
       !gridRolling &&
       !noteMissing &&
-      !draw.closed &&
-      !draw.allTaken
+      !ui.closed &&
+      !ui.allTaken
     );
   }
 
-  /* ── 模式一:翻牌(点卡 → 滚动高光 → 服务端结果 → 我的卡翻面) ── */
-  function flipPick(idx: number) {
+  /* ── 模式一:翻牌(点任意卡 → 滚动高光 → 服务端结果落定 → 结果卡翻面) ──
+     翻的是「结果卡」:翻转与结果墙、后台记录用同一个 slotId,永不穿帮。
+     翻面动画由 .is-flipping 的 0.7s transition 驱动,不用 WAAPI 叠加。 */
+  function flipPick() {
     if (!canDraw()) return;
-    startRoll(slots.map((slot) => slot.label));
+    startPerforming();
+    if (!prefersReduced) startRoll(slots.map((slot) => slot.label));
     void drawOnce().then((result) => {
       stopRoll();
-      if (!result || !result.myDraw) return;
+      if (!result || !result.myDraw) {
+        // 失败解锁:退回可重试状态。
+        performingRef.current = false;
+        setPerforming(false);
+        return;
+      }
+      if (prefersReduced) {
+        setWallRevealed(true);
+        return;
+      }
       setFlipping(true);
-      const units = document.querySelectorAll("#stage-flip .draw-blind-card");
-      const u = units[idx] as HTMLElement | undefined;
-      u?.animate(
-        [
-          { transform: "rotateY(0deg) scale(1)" },
-          { transform: "rotateY(90deg) scale(1)" },
-          { transform: "rotateY(180deg) scale(1)" },
-        ],
-        { duration: 700, easing: "cubic-bezier(.25,.7,.18,1)" },
-      );
-      window.setTimeout(() => {
-        setFlipping(false);
-        units.forEach((c, i) => {
-          if (i !== idx) c.classList.add("dim-others");
-        });
-        finishReveal(result.myDraw!.label);
-      }, 430);
+      window.setTimeout(() => setFlipping(false), 500);
+      window.setTimeout(() => finishReveal(result.myDraw!.label), 550);
     });
   }
 
   /* ── 模式二:刮奖(点牌 → 服务端结果上涂层 → 刮开揭晓) ── */
   function scratchPick() {
     if (!canDraw()) return;
+    startPerforming();
     drawMut.mutate(undefined, {
       onSuccess: (result) => {
         if (result.blind === false && result.myDraw) {
@@ -202,8 +246,13 @@ export function DrawView({
           setScratchReady(true);
         }
       },
+      onError: () => {
+        performingRef.current = false;
+        setPerforming(false);
+      },
     });
   }
+
   function initFoil() {
     const card = document.querySelector(".scratch-card");
     const cv = document.getElementById("draw-foil") as HTMLCanvasElement | null;
@@ -284,6 +333,13 @@ export function DrawView({
       scratching = false;
     };
   }
+
+  // 涂层就位:刮奖卡渲染出来后立即铺银箔并挂上指针事件。
+  useEffect(() => {
+    if (scratchReady && mode === "scratch") initFoil();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scratchReady, mode]);
+
   function scratchCheck() {
     const cv = document.getElementById("draw-foil") as HTMLCanvasElement | null;
     if (!cv) return;
@@ -294,47 +350,46 @@ export function DrawView({
     let total = 0;
     for (let i = 3; i < data.length; i += 4 * 16) {
       total++;
-      if (data[i] === 0) clear++;
+      // 判「有效透明」而非精确 0:destination-out 的抗锯齿会在刮痕里
+      // 留下大量半透明像素,按 ===0 判则刮到 95% 也永远不开奖。
+      if (data[i] < 128) clear++;
     }
     if (clear / total > 0.42 && !cv.classList.contains("clear")) {
       cv.classList.add("clear");
-      if (scratchLabel === "一等奖") confetti(70);
-      jelly(panelRef.current);
       setWallRevealed(true);
     }
   }
 
-  /* ── 模式三:九宫格(开始 → 服务端结果 → 跑灯落在对应格) ── */
-  function gridCellLabel(cell: number): string {
-    // 真实签位摊进偶数格,奇数格用「谢谢参与」补位(有该签位时用真签位)
-    const labels = slots.map((s) => s.label);
-    if (cell % 2 === 0) {
-      return labels[cell / 2] || "谢谢参与";
-    }
-    return (
-      labels.find(l => l === "谢谢参与") ??
-      labels[labels.length - 1] ??
-      "谢谢参与"
-    );
+  /* ── 模式三:九宫格(开始 → 服务端结果 → 跑灯落在对应格) ──
+     真实签位按顺序摊进 8 个外格;签位多于 8 个时,超出部分的结果落在
+     兜底格,横幅(band)仍显示真实结果。 */
+  function gridLabels(): string[] {
+    const real = slots.map((s) => s.label);
+    const filler = real.includes("谢谢参与") ? "谢谢参与" : "未抽中";
+    return Array.from({ length: 8 }, (_, i) => real[i] ?? filler);
   }
   function gridStart() {
     if (!canDraw()) return;
+    startPerforming();
     drawMut.mutate(undefined, {
       onSuccess: (result) => {
         if (result.blind === false && result.myDraw) {
           runGridLights(result.myDraw.label);
         }
       },
+      onError: () => {
+        performingRef.current = false;
+        setPerforming(false);
+      },
     });
   }
   function runGridLights(label: string) {
     setGridRolling(true);
-    const labels = Array.from({ length: 8 }, (_, c) => gridCellLabel(c));
+    const cells = gridLabels();
     const order = [0, 1, 2, 4, 7, 6, 5, 3];
-    const winCell = Math.max(
-      0,
-      labels.findIndex(l => l === label),
-    );
+    const found = cells.findIndex((l) => l === label);
+    const fillerCell = cells.indexOf("未抽中");
+    const winCell = found >= 0 ? found : fillerCell >= 0 ? fillerCell : 0;
     const winPos = order.indexOf(winCell);
     const landing = 22 + ((winPos + 8) % 8);
     const steps: Array<{ cell: number; delay: number }> = [];
@@ -342,16 +397,20 @@ export function DrawView({
       const t = i / landing;
       steps.push({
         cell: order[i % 8],
-        delay: t < 0.72 ? 105 : 105 + Math.pow((t - 0.72) / 0.28, 1.6) * 480,
+        delay: prefersReduced
+          ? 0
+          : t < 0.72
+            ? 105
+            : 105 + Math.pow((t - 0.72) / 0.28, 1.6) * 480,
       });
     }
     let acc = 0;
     steps.forEach((st, k) => {
       acc += st.delay;
-      window.setTimeout(() => {
+      const id = window.setTimeout(() => {
         document
           .querySelectorAll(".cell9")
-          .forEach(c => c.classList.remove("lit"));
+          .forEach((c) => c.classList.remove("lit"));
         const el = document.querySelector(`.cell9[data-cell="${st.cell}"]`);
         el?.classList.add("lit");
         if (k === steps.length - 1) {
@@ -360,32 +419,31 @@ export function DrawView({
           setGridWinLabel(label);
           setGridDone(true);
           finishReveal(label);
-          const go = document.getElementById("grid-go");
-          if (go) go.textContent = "已抽完";
         }
       }, acc);
+      gridTimers.current.push(id);
     });
   }
 
   const revealed = !draw.blind;
-  const myLabel = draw.myDraw?.label ?? null;
-  const closed = draw.closed || draw.allTaken;
+  const closed = ui.closed || ui.allTaken;
 
-  const status = draw.closed
+  const status = ui.closed
     ? "已结束"
-    : draw.allTaken
+    : ui.allTaken
       ? "名额已抽完"
-      : draw.blind
+      : ui.blind
         ? "进行中 · 参与后公布结果"
-        : `${draw.totalTaken} 人已参与`;
+        : `${ui.totalTaken ?? 0} 人已参与`;
 
-  const showInteractive = draw.blind && !wallRevealed && !closed;
-  // 翻面演出的一秒钟里,运行时已是全量数据,但类型上仍是盲选视图
-  const resultSlots: DrawRevealedView["slots"] = draw.blind
-    ? wallRevealed
-      ? (draw as unknown as DrawRevealedView).slots
-      : []
-    : draw.slots;
+  // 舞台显隐只看盲选/收尾/结束三个状态;演出期间(performing)舞台必须
+  // 保持可见——数据已被 ui 快照冻结,这里若再看 performing 会把动画拆掉。
+  const showInteractive = ui.blind && !wallRevealed && !closed;
+  // 结果墙数据:轮询已揭晓用真数据;演出刚收尾、轮询还没回来时用服务端
+  // 结果快照(revealSlots),永不拿盲选数据渲染数字。
+  const wallSlots: DrawRevealedView["slots"] = revealed
+    ? draw.slots
+    : (revealSlots ?? []);
 
   return (
     <section className="flex flex-col gap-6">
@@ -423,7 +481,8 @@ export function DrawView({
                 type="button"
                 className={cn("seg-item", mode === m.id && "on")}
                 onClick={() => {
-                  if (rolling || flipping || scratchReady || gridRolling) return;
+                  if (performing || rolling || flipping || scratchReady || gridRolling)
+                    return;
                   setMode(m.id);
                 }}
               >
@@ -432,7 +491,7 @@ export function DrawView({
             ))}
           </div>
 
-          <div ref={panelRef} className="glass rounded-[var(--r-lg)] p-5 stage-panel">
+          <div ref={panelRef} className="glass stage-panel p-5">
             {/* 模式一:翻牌 */}
             <div className={cn("stage", mode === "flip" && "on")} id="stage-flip">
               <div className="draw-grid scene">
@@ -441,13 +500,22 @@ export function DrawView({
                   return (
                     <div
                       key={slot.id}
+                      role={mySlotId === null ? "button" : undefined}
+                      tabIndex={mySlotId === null ? 0 : -1}
+                      aria-label={`盲选卡：${slot.label}`}
                       className={cn(
                         "draw-blind-card",
                         mine && (flipping || wallRevealed || mySlotId === slot.id) && "is-flipping",
                         (flipping || wallRevealed) && !mine && "dim-others",
                       )}
                       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
-                      onClick={() => (mySlotId === null ? flipPick(index) : undefined)}
+                      onClick={() => (mySlotId === null ? flipPick() : undefined)}
+                      onKeyDown={(e) => {
+                        if (mySlotId === null && (e.key === "Enter" || e.key === " ")) {
+                          e.preventDefault();
+                          flipPick();
+                        }
+                      }}
                     >
                       <div className="dc-face dc-front">
                         <span className="block truncate font-medium text-foreground">
@@ -462,7 +530,7 @@ export function DrawView({
                   );
                 })}
               </div>
-              <p className="tip">
+              <p className="tip" aria-live="polite">
                 {rolling
                   ? `抽取中… ${rollLabel}`
                   : mySlotId !== null
@@ -475,15 +543,16 @@ export function DrawView({
             <div className={cn("stage", mode === "scratch" && "on")} id="stage-scratch">
               <div className="scratch-deck">
                 {slots.slice(0, 3).map((slot, i) => (
-                  <div
+                  <button
                     key={slot.id}
+                    type="button"
                     className={cn("scratch-pick", scratchReady && "hidden")}
                     style={{ animationDelay: `${i * 80}ms` }}
                     onClick={() => scratchPick()}
                   >
                     <span className="scratch-seal">?</span>
                     <span className="scratch-cap">PULSE</span>
-                  </div>
+                  </button>
                 ))}
               </div>
               {scratchReady ? (
@@ -492,7 +561,6 @@ export function DrawView({
                     <div className="prize-face">
                       <p className="prize-lb">CONGRATULATIONS</p>
                       <p className="prize-big">{scratchLabel}</p>
-                      <p className="prize-who">小明 · 刚刚</p>
                     </div>
                     <canvas id="draw-foil" />
                   </div>
@@ -506,17 +574,16 @@ export function DrawView({
             {/* 模式三:九宫格 */}
             <div className={cn("stage", mode === "grid" && "on")} id="stage-grid">
               <div className="grid9">
-                {Array.from({ length: 8 }, (_, cell) => {
-                  const label = gridCellLabel(cell);
+                {gridLabels().map((label, cell) => {
                   const isWin = gridWinLabel === label && gridDone;
                   return (
                     <div
                       key={cell}
                       data-cell={cell}
-                      className={cn("cell9", gridLit === cell && "lit", isWin && "win")}
+                      className={cn("cell9", isWin && "win")}
                     >
                       <span>{label}</span>
-                      <span className="s">保密中</span>
+                      <span className="s">{isWin ? "你的签" : "保密中"}</span>
                     </div>
                   );
                 })}
@@ -530,7 +597,7 @@ export function DrawView({
                   {mySlotId !== null ? "已抽完" : gridRolling ? "…" : "开始"}
                 </button>
               </div>
-              <div className="band" id="grid-band">
+              <div className="band" id="grid-band" aria-live="polite">
                 {gridWinLabel ? (
                   <>
                     <p className="band-lb">跑灯落定 · 你抽到了</p>
@@ -551,17 +618,17 @@ export function DrawView({
         </>
       ) : null}
 
-      {revealed || wallRevealed ? (
+      {(wallRevealed || (revealed && !performing)) && wallSlots.length > 0 ? (
         <div className="flex flex-col gap-2">
           <p className="text-xs font-medium tracking-wide text-muted">抽取结果</p>
-          {resultSlots.map((slot) => {
+          {wallSlots.map((slot) => {
             const fill =
               slot.count === -1 ? 0 : slot.count > 0 ? slot.taken / slot.count : 0;
             const isMine = mySlotId === slot.id || draw.myDraw?.slotId === slot.id;
             return (
               <div
                 key={slot.id}
-                className="poll-option is-locked cursor-default"
+                className={cn("poll-option is-locked cursor-default", isMine && "is-mine")}
                 style={{ ["--fill" as string]: String(fill) }}
               >
                 <span className="flex min-h-12 items-center justify-between gap-3">

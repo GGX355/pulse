@@ -209,13 +209,17 @@ export async function seedIfEmpty(sql: Sql): Promise<void> {
   );
   if ((existing[0]?.n ?? 0) > 0) return;
 
+  // 固定 id + on conflict:两个并发首请求同时通过空库检查也不会 500,
+  // 后到者静默让位。
   await sql.query(
-    `insert into polls (id, question, voter_note_label) values ($1, $2, $3)`,
+    `insert into polls (id, question, voter_note_label) values ($1, $2, $3)
+     on conflict (id) do nothing`,
     [SEED_POLL_ID, "午饭吃什么？", ""],
   );
   for (let i = 0; i < SEED_OPTIONS.length; i += 1) {
     await sql.query(
-      `insert into poll_options (id, poll_id, label, sort_order) values ($1, $2, $3, $4)`,
+      `insert into poll_options (id, poll_id, label, sort_order) values ($1, $2, $3, $4)
+       on conflict (id) do nothing`,
       [`${SEED_POLL_ID}-${i + 1}`, SEED_POLL_ID, SEED_OPTIONS[i], i],
     );
   }
@@ -361,6 +365,31 @@ export async function castVote(
     return next;
   }
 
+  // 认领闸门之后再复核一次结束状态:读状态与写票之间创建者可能刚好收工。
+  const still = await sql.query<{ closed: boolean }>(
+    `select (closed_at is not null) as closed from polls where id = $1 limit 1`,
+    [live.id],
+  );
+  if (still[0]?.closed) {
+    await sql.query(`delete from poll_ballots where poll_id = $1 and voter_key = $2`, [
+      live.id,
+      key,
+    ]);
+    throw new Error("投票已结束");
+  }
+
+  const rollback = async (): Promise<void> => {
+    // 本次尝试的所有痕迹一并清掉(此前已早退,这里删不到别人的数据)。
+    await sql.query(`delete from poll_votes where poll_id = $1 and voter_key = $2`, [
+      live.id,
+      key,
+    ]);
+    await sql.query(`delete from poll_ballots where poll_id = $1 and voter_key = $2`, [
+      live.id,
+      key,
+    ]);
+  };
+
   try {
     for (const id of wanted) {
       await sql.query(
@@ -379,11 +408,23 @@ export async function castVote(
       );
     }
   } catch (err) {
-    await sql.query(`delete from poll_ballots where poll_id = $1 and voter_key = $2`, [
-      live.id,
-      key,
-    ]);
+    await rollback();
     throw err;
+  }
+
+  // 名单复查(收窄并发窗口):两台设备同姓名同时提交时,双方都能通过
+  // 前置的 rosterTaken 检查;这里在写入后按「他人是否已用同一姓名」裁决,
+  // 后到者整体回滚。名单配了则 note 必非空(前面已校验)。
+  if (await rosterExists(sql, live.id)) {
+    const dupe = await sql.query<{ n: number }>(
+      `select count(*)::int as n from poll_votes
+       where poll_id = $1 and voter_note = $2 and voter_key <> $3`,
+      [live.id, note, key],
+    );
+    if ((dupe[0]?.n ?? 0) > 0) {
+      await rollback();
+      throw new Error("该姓名已参与");
+    }
   }
 
   if (note) {

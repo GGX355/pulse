@@ -9,7 +9,7 @@ export type SpringOpts = { freq?: number; decay?: number; dur?: number; phase?: 
 export function springKF(
   ax: number,
   ay: number,
-  { freq = 3.2, decay = 5.2, dur = 950, phase = 0 }: SpringOpts = {},
+  { freq = 3.2, decay = 5.2, phase = 0 }: SpringOpts = {},
 ): Keyframe[] {
   const N = 40;
   const kf: Keyframe[] = [];

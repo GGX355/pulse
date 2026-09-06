@@ -649,6 +649,305 @@ main h1 {
   color: transparent;
 }
 
+/* ── Draw: 揭晓舞台（三模式切换 · seg 药丸 + 舞台显隐） ────────────
+   翻牌 / 刮奖 / 九宫格共用一个舞台容器，.stage.on 控制显隐，
+   .seg 是档位切换的玻璃药丸（mover 滑到当前档位下面）。 */
+
+.stage {
+  display: none;
+}
+.stage.on {
+  display: block;
+  animation: fade-in 240ms ease both;
+}
+
+.seg {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  width: max-content;
+  margin-inline: auto;
+  border-radius: var(--r-pill);
+  padding: 4px;
+}
+.seg-mover {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: 0;
+  border-radius: var(--r-pill);
+  background: var(--mover-bg);
+  box-shadow: var(--mover-shadow);
+  transition:
+    left 0.38s var(--ease-out-expo),
+    width 0.38s var(--ease-out-expo);
+}
+.seg-item {
+  position: relative;
+  z-index: 1;
+  border: 0;
+  background: transparent;
+  padding: 8px 14px;
+  border-radius: var(--r-pill);
+  font-family: var(--font-sans);
+  font-size: var(--fs-subhead);
+  font-weight: 600;
+  color: var(--color-muted);
+  cursor: pointer;
+  transition:
+    color 0.2s ease,
+    transform 0.4s cubic-bezier(0.28, 1.7, 0.4, 1);
+}
+.seg-item:hover {
+  color: var(--color-foreground);
+}
+.seg-item.on {
+  color: var(--color-foreground);
+}
+.seg-item:active {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+.seg-item:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+
+.stage-panel {
+  border-radius: var(--r-lg);
+}
+
+.tip {
+  margin-top: 14px;
+  text-align: center;
+  font-size: var(--fs-footnote);
+  color: var(--color-muted);
+}
+
+/* 翻牌：3D 透视容器（卡翻转由 .is-flipping 的 transition 驱动） */
+.draw-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  perspective: 900px;
+}
+@media (max-width: 480px) {
+  .draw-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* 刮奖：牌堆 → 选中上涂层 → 刮开 */
+.scratch-deck {
+  display: flex;
+  justify-content: center;
+  gap: 14px;
+  padding: 8px 0 4px;
+}
+.scratch-pick {
+  position: relative;
+  width: 96px;
+  height: 128px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-md);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  box-shadow: var(--rim-sm);
+  cursor: pointer;
+  font-family: var(--font-sans);
+  animation: pop-in 420ms var(--ease-spring) both;
+  transition:
+    transform 0.45s cubic-bezier(0.28, 1.7, 0.4, 1),
+    box-shadow 0.25s ease;
+}
+.scratch-pick:nth-child(2) {
+  animation-delay: 80ms;
+}
+.scratch-pick:nth-child(3) {
+  animation-delay: 160ms;
+}
+.scratch-pick:hover {
+  transform: translateY(-4px) rotate(-1.5deg);
+  box-shadow: var(--rim);
+}
+.scratch-pick:active {
+  transform: scale(0.95);
+  transition-duration: 0.08s;
+}
+.scratch-pick:focus-visible {
+  outline: 2px solid var(--color-ring);
+  outline-offset: 2px;
+}
+.scratch-seal {
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--color-accent);
+}
+.scratch-cap {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.22em;
+  text-indent: 0.22em;
+  color: var(--color-subtle);
+}
+.scratch-stage {
+  animation: fade-in 240ms ease both;
+}
+.scratch-card {
+  position: relative;
+  max-width: 380px;
+  aspect-ratio: 16 / 10;
+  margin-inline: auto;
+  border-radius: var(--r-md);
+  overflow: hidden;
+}
+.prize-face {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+}
+.prize-lb {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.3em;
+  text-indent: 0.3em;
+  color: var(--color-subtle);
+}
+.prize-big {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--color-accent), #7d5aff 60%, #ff5f8f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+#draw-foil {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  touch-action: none;
+  cursor: crosshair;
+  transition: opacity 0.35s ease;
+}
+#draw-foil.clear {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* 九宫格：3×3 跑灯，中格是开始键 */
+.grid9 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+  max-width: 340px;
+  margin-inline: auto;
+}
+.cell9 {
+  position: relative;
+  aspect-ratio: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px;
+  border: 1px solid var(--glass-border);
+  border-radius: var(--r-sm);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  box-shadow: var(--rim-sm);
+  overflow: hidden;
+  transition:
+    transform 0.12s ease,
+    border-color 0.12s ease,
+    box-shadow 0.12s ease;
+}
+.cell9 > span:first-child {
+  font-size: var(--fs-footnote);
+  font-weight: 600;
+  text-align: center;
+}
+.cell9 .s {
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  color: var(--color-subtle);
+}
+.cell9.lit {
+  border-color: color-mix(in oklab, var(--color-accent) 55%, var(--glass-border));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-accent) 16%, transparent),
+    var(--rim-sm);
+  transform: translateY(-2px) scale(1.03);
+}
+.cell9.win {
+  border-color: color-mix(in oklab, var(--color-accent) 70%, var(--glass-border));
+  box-shadow:
+    0 0 0 2px color-mix(in oklab, var(--color-accent) 24%, transparent),
+    var(--rim);
+  animation: pop-in 450ms var(--ease-spring) both;
+}
+.cell9.win .s {
+  color: var(--color-accent);
+  font-weight: 600;
+}
+.go9 {
+  aspect-ratio: 1;
+  border: 0;
+  border-radius: var(--r-sm);
+  background: var(--mover-bg);
+  box-shadow: var(--mover-shadow);
+  font-family: var(--font-sans);
+  font-size: var(--fs-subhead);
+  font-weight: 700;
+  color: var(--color-foreground);
+  cursor: pointer;
+  transition: transform 0.4s cubic-bezier(0.28, 1.7, 0.4, 1);
+}
+.go9:active:not(:disabled) {
+  transform: scale(0.94);
+  transition-duration: 0.08s;
+}
+.go9:disabled {
+  opacity: 0.6;
+  cursor: default;
+}
+.band {
+  min-height: 64px;
+  margin-top: 14px;
+  text-align: center;
+}
+.band-lb {
+  font-size: var(--fs-caption);
+  color: var(--color-muted);
+}
+.band-big {
+  font-family: var(--font-display);
+  font-size: var(--fs-title);
+  font-weight: 700;
+  background: linear-gradient(120deg, var(--color-accent), #7d5aff 60%, #ff5f8f);
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
 /* The system asks, the app obeys. */
 @media (prefers-reduced-motion: reduce) {
   *,
