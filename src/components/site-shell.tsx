@@ -94,7 +94,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
         >
           <Link
             to="/"
-            className="relative z-[1] shrink-0 px-3 font-display text-base font-semibold tracking-tight text-foreground"
+            className="relative z-[1] shrink-0 px-3 font-display text-base font-semibold tracking-tight text-foreground md:text-lg lg:text-2xl"
           >
             Pulse
           </Link>
