@@ -522,13 +522,7 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
 .draw-blind-card {
   position: relative;
   min-height: 68px;
-  overflow: hidden;
-  border: 1px solid var(--glass-border);
   border-radius: var(--r-md);
-  background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
-  -webkit-backdrop-filter: var(--glass-bf);
-  box-shadow: var(--rim-sm);
   transform-style: preserve-3d;
   transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.05);
   animation: pop-in 420ms var(--ease-spring) both;
@@ -549,13 +543,13 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
   animation: sweep 3.6s ease-in-out infinite;
   pointer-events: none;
 }
-
-/* 自己抽中后的翻面:注意 fill-mode 会压平 3D,翻面态必须清掉入场动画 */
-.draw-blind-card.is-flipping {
+.draw-blind-card.is-flipping::after {
   animation: none;
-  transform: rotateY(180deg);
+  opacity: 0;
 }
 
+/* 玻璃材质在面上而非卡上：backdrop-filter 会压平 preserve-3d，
+   翻面就会穿帮（front 的背面以镜像漏出）。 */
 .dc-face {
   position: absolute;
   inset: 0;
@@ -567,12 +561,25 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
   border-radius: inherit;
   padding: 16px 14px;
   text-align: center;
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  border: 1px solid var(--glass-border);
+  box-shadow: var(--rim-sm);
 }
 .dc-face.dc-back {
   transform: rotateY(180deg);
   flex-direction: column;
   gap: 2px;
+  background: var(--mover-bg);
 }
+
+/* 自己抽中后的翻面:注意 fill-mode 会压平 3D,翻面态必须清掉入场动画 */
+.draw-blind-card.is-flipping {
+  animation: none;
+  transform: rotateY(180deg);
+}
+
 .dc-face.dc-back .dc-back-label {
   font-size: var(--fs-caption);
   color: var(--color-muted);
