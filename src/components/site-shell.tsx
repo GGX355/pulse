@@ -11,7 +11,7 @@ const NAV = [
   { to: "/draw", label: "抽签" },
 ] as const;
 
-const SHELL = "mx-auto w-full max-w-xl px-4";
+const SHELL = "mx-auto w-full max-w-xl md:max-w-2xl lg:max-w-3xl px-4";
 
 export function SiteShell({ children }: { children: ReactNode }) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -88,7 +88,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       <header className="sticky top-3 z-30 px-4">
         <div
           className={cn(
-            "nav-shell glass mx-auto h-14 w-full max-w-xl px-2",
+            "nav-shell glass mx-auto h-14 w-full max-w-xl md:max-w-2xl lg:max-w-3xl px-2",
             "shadow-none",
           )}
         >

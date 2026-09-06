@@ -1041,3 +1041,18 @@ main h1 {
   line-height: 1.6;
   color: var(--color-muted);
 }
+
+/* 按钮按下轻缩:全站按钮统一的「推拉」手感 */
+.btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+.btn {
+  transition:
+    transform 0.4s cubic-bezier(0.28, 1.7, 0.4, 1),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.btn:active:not(:disabled) {
+  transition-duration: 0.08s;
+}
