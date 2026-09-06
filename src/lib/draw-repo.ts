@@ -369,15 +369,18 @@ export async function drawOne(
       );
 
       // 名单复查(收窄并发窗口):两台设备同姓名同时抽签时,双方都能通过
-      // 前置的 rosterTaken 检查;写入后按「他人是否已用同一姓名」裁决,
-      // 后到者退签、退记录、退闸门。名单配了则 note 必非空(前面已校验)。
+      // 前置的 rosterTaken 检查;写入后做「最早者胜」裁决——非最早者退签、
+      // 退记录、退闸门。平局按 voter_key 字典序,保证恰好一人留下。
       if (await rosterExists(sql, pollId)) {
-        const dupe = await sql.query<{ n: number }>(
-          `select count(*)::int as n from poll_votes
-           where poll_id = $1 and voter_note = $2 and voter_key <> $3`,
-          [pollId, note, key],
+        const first = await sql.query<{ voter_key: string }>(
+          `select voter_key from poll_votes
+           where poll_id = $1 and voter_note = $2
+           group by voter_key
+           order by min(created_at) asc, voter_key asc
+           limit 1`,
+          [pollId, note],
         );
-        if ((dupe[0]?.n ?? 0) > 0) {
+        if (first[0] && first[0].voter_key !== key) {
           await sql.query(
             `update poll_options set taken = taken - 1 where id = $1`,
             [pick.id],

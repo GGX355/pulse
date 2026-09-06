@@ -315,6 +315,12 @@ export function DrawView({
       scratching = true;
       last = pos(e);
       stroke(last, last);
+      // 捕获指针:拖出卡面继续刮,松手必然落回 canvas 的 pointerup
+      try {
+        cv.setPointerCapture(e.pointerId);
+      } catch {
+        /* 旧浏览器不支持则退化为 onpointerleave 兜底 */
+      }
       e.preventDefault();
     };
     cv.onpointermove = (e: PointerEvent) => {
@@ -356,6 +362,10 @@ export function DrawView({
     }
     if (clear / total > 0.42 && !cv.classList.contains("clear")) {
       cv.classList.add("clear");
+      if (!prefersReduced) {
+        if (scratchLabel === "一等奖") confetti(70);
+        jelly(panelRef.current);
+      }
       setWallRevealed(true);
     }
   }
@@ -506,7 +516,8 @@ export function DrawView({
                       className={cn(
                         "draw-blind-card",
                         mine && (flipping || wallRevealed || mySlotId === slot.id) && "is-flipping",
-                        (flipping || wallRevealed) && !mine && "dim-others",
+                        // 结果一旦落定,其他卡持续模糊淡化到开墙,不回弹
+                        (flipping || wallRevealed || mySlotId !== null) && !mine && "dim-others",
                       )}
                       style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
                       onClick={() => (mySlotId === null ? flipPick() : undefined)}

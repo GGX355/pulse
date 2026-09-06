@@ -413,15 +413,19 @@ export async function castVote(
   }
 
   // 名单复查(收窄并发窗口):两台设备同姓名同时提交时,双方都能通过
-  // 前置的 rosterTaken 检查;这里在写入后按「他人是否已用同一姓名」裁决,
-  // 后到者整体回滚。名单配了则 note 必非空(前面已校验)。
+  // 前置的 rosterTaken 检查;这里在写入后做「最早者胜」裁决——按首次
+  // 写入时间排序,非最早者整体回滚。平局(同微秒)按 voter_key 字典序,
+  // 保证恰好一人留下。
   if (await rosterExists(sql, live.id)) {
-    const dupe = await sql.query<{ n: number }>(
-      `select count(*)::int as n from poll_votes
-       where poll_id = $1 and voter_note = $2 and voter_key <> $3`,
-      [live.id, note, key],
+    const first = await sql.query<{ voter_key: string }>(
+      `select voter_key from poll_votes
+       where poll_id = $1 and voter_note = $2
+       group by voter_key
+       order by min(created_at) asc, voter_key asc
+       limit 1`,
+      [live.id, note],
     );
-    if ((dupe[0]?.n ?? 0) > 0) {
+    if (first[0] && first[0].voter_key !== key) {
       await rollback();
       throw new Error("该姓名已参与");
     }
