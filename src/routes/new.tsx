@@ -28,8 +28,8 @@ function NewPage() {
         <span
           aria-hidden
           className={
-            "absolute inset-y-1 left-1 w-[calc(50%-6px)] rounded-full bg-surface-2 transition-transform duration-250 ease-out " +
-            (kind === "draw" ? "translate-x-[calc(100%+8px)]" : "translate-x-0")
+            "tab-slider " +
+            (kind === "draw" ? "translate-x-full" : "translate-x-0")
           }
         />
         {(

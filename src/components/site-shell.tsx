@@ -154,7 +154,12 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 退出
               </button>
             ) : (
-              <Button asChild variant="outline" size="sm">
+              <Button
+                asChild
+                variant="ghost"
+                size="sm"
+                className="shrink-0 rounded-full border border-transparent bg-[var(--mover-bg)] text-foreground shadow-[var(--mover-shadow)] hover:bg-[var(--mover-bg)] hover:text-foreground"
+              >
                 <Link to="/login">登录</Link>
               </Button>
             )}

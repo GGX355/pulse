@@ -948,6 +948,40 @@ main h1 {
   color: transparent;
 }
 
+/* ── 分段切换滑块（登录/注册、投票/抽签的滑动高亮） ──
+   必须用专用类而不是 bg-surface-2:下方玻璃化覆盖会给 .bg-surface-2
+   强制 position:relative,把 absolute 滑块顶进网格流,造成文字错位。 */
+.tab-slider {
+  position: absolute;
+  top: 4px;
+  bottom: 4px;
+  left: 4px;
+  width: calc(50% - 5px);
+  border-radius: var(--r-pill);
+  background: var(--mover-bg);
+  box-shadow: var(--mover-shadow);
+  /* Tailwind v4 的 translate-x-* 走 translate 属性,过渡要对着它 */
+  transition: translate 0.25s var(--ease-out-expo);
+  pointer-events: none;
+}
+
+.theme-btn .theme-emoji {
+  margin-right: 4px;
+}
+
+/* 手机上主题按钮只留 emoji、导航更紧凑,给窄屏头部腾地方 */
+@media (max-width: 480px) {
+  .theme-btn .theme-text {
+    display: none;
+  }
+  .theme-btn {
+    padding: 8px 10px;
+  }
+  .nav-shell .nav-link {
+    padding-inline: 8px;
+  }
+}
+
 /* The system asks, the app obeys. */
 @media (prefers-reduced-motion: reduce) {
   *,

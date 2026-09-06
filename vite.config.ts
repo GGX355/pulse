@@ -150,6 +150,8 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "0.0.0.0",
     port: 8080,
     strictPort: true,
+    // 隧道预览(serveo)用的公网域名;仅 dev 服务器生效,不影响生产。
+    allowedHosts: [".serveousercontent.com", "bore.pub"],
   },
   preview: {
     host: "127.0.0.1",
