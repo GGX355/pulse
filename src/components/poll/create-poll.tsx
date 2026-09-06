@@ -83,7 +83,7 @@ export function CreatePollForm() {
 
   return (
     <form
-      className="flex flex-col gap-6"
+      className="glass stage-panel flex flex-col gap-6 rounded-[var(--r-lg)] p-5 animate-in fade-in slide-in-from-bottom-3 duration-500"
       onSubmit={(e) => {
         e.preventDefault();
         if (optionCount < 2 || optionCount > 8 || !question.trim()) return;

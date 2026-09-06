@@ -223,8 +223,8 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
 .glass {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   border: 1px solid var(--glass-border);
   box-shadow: var(--rim);
 }
@@ -246,8 +246,8 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
 .bg-surface-2 {
   position: relative;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   border-color: var(--glass-border);
   box-shadow: var(--rim-sm);
 }
@@ -360,8 +360,8 @@ main h1 {
   background-size:
     calc(var(--fill, 0) * 100%) 100%,
     100% 100%;
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   box-shadow: var(--rim-sm);
   padding: 14px 16px;
   transform: translateX(var(--magx, 0));
@@ -639,8 +639,8 @@ main h1 {
   padding: 16px 14px;
   text-align: center;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   border: 1px solid var(--glass-border);
   box-shadow: var(--rim-sm);
 }
@@ -779,8 +779,8 @@ main h1 {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-md);
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   box-shadow: var(--rim-sm);
   cursor: pointer;
   font-family: var(--font-sans);
@@ -839,8 +839,8 @@ main h1 {
   justify-content: center;
   gap: 6px;
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
 }
 .prize-lb {
   font-size: 10px;
@@ -892,8 +892,8 @@ main h1 {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-sm);
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   box-shadow: var(--rim-sm);
   overflow: hidden;
   transition:
@@ -937,8 +937,8 @@ main h1 {
   border: 1px solid var(--glass-border);
   border-radius: var(--r-sm);
   background: var(--glass-bg);
-  backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  backdrop-filter: var(--glass-bf);
   box-shadow: none;
   font-family: var(--font-sans);
   font-size: var(--fs-subhead);

@@ -70,7 +70,7 @@ function RowInner({
 }
 
 const rowClass =
-  "flex items-center py-3 touch-manipulation hover:opacity-80 [&>span]:w-full";
+  "flex items-center py-3 touch-manipulation hover:opacity-80 animate-in fade-in slide-in-from-bottom-2 duration-500 fill-mode-both [&>span]:w-full";
 
 const liveBadge = (
   <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">

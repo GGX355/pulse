@@ -83,7 +83,7 @@ function AuthForm({ onDone }: { onDone: () => void }) {
   }
 
   return (
-    <form className="flex flex-col gap-6" onSubmit={(e) => void submit(e)}>
+    <form className="glass stage-panel flex flex-col gap-6 rounded-[var(--r-lg)] p-5 animate-in fade-in slide-in-from-bottom-3 duration-500" onSubmit={(e) => void submit(e)}>
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight">
           {mode === "signin" ? "登录" : "注册"}

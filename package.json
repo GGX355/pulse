@@ -99,5 +99,14 @@
   },
   "engines": {
     "node": ">=22.6"
-  }
+  },
+  "browserslist": [
+    "chrome >= 107",
+    "edge >= 107",
+    "firefox >= 104",
+    "safari >= 16",
+    "ios_saf >= 16",
+    "and_chr >= 107",
+    "and_ff >= 104"
+  ]
 }
