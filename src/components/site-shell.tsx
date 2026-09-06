@@ -42,6 +42,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
       if (!active) return;
       mover.style.left = `${active.offsetLeft}px`;
       mover.style.width = `${active.offsetWidth}px`;
+      mover.style.opacity = "1";
     };
     place();
     const t = window.setTimeout(place, 200); // 字体加载后宽度会变
@@ -141,7 +142,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
               className="theme-btn touch-manipulation"
               onClick={() => themeCycleRef.current()}
             >
-              🌗 系统
+              🌗
             </button>
             {user ? (
               <button

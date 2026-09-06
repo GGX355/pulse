@@ -298,9 +298,12 @@ main h1 {
   bottom: 5px;
   border-radius: var(--r-pill);
   z-index: 0;
+  opacity: 0;
   background: var(--mover-bg);
   box-shadow: var(--mover-shadow);
   transition:
+    opacity 0.2s ease 0.05s,
+    
     left 0.42s cubic-bezier(0.3, 1.35, 0.4, 1),
     width 0.42s cubic-bezier(0.3, 1.35, 0.4, 1);
 }
