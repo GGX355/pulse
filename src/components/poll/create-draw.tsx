@@ -1,7 +1,7 @@
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { createDrawLive } from "@/lib/draw-api";
+import { createDrawLive, type RevealMode } from "@/lib/draw-api";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
@@ -10,6 +10,12 @@ import { Label } from "@/components/ui/label";
 import { cn } from "@/lib/utils";
 
 type BlankMode = "count" | "unlimited" | "none";
+
+const REVEAL_OPTIONS: Array<{ id: RevealMode; label: string; hint: string }> = [
+  { id: "flip", label: "🂠 翻牌", hint: "点卡翻面" },
+  { id: "scratch", label: "✦ 刮奖", hint: "刮开涂层" },
+  { id: "grid", label: "▦ 九宫格", hint: "跑灯落格" },
+];
 
 type SlotRow = { label: string; count: string };
 
@@ -54,7 +60,24 @@ export function CreateDrawForm() {
   const [noteLabel, setNoteLabel] = useState("姓名");
   const [rosterOn, setRosterOn] = useState(false);
   const [rosterText, setRosterText] = useState("");
+  const [revealModes, setRevealModes] = useState<RevealMode[]>([
+    "flip",
+    "scratch",
+    "grid",
+  ]);
   const [error, setError] = useState<string | null>(null);
+
+  function toggleRevealMode(id: RevealMode) {
+    setRevealModes((prev) => {
+      if (prev.includes(id)) {
+        // 至少保留一种:试图关掉最后一种时原地不动。
+        return prev.length > 1 ? prev.filter((m) => m !== id) : prev;
+      }
+      // 按固定顺序排列,发送与服务端存储都稳定。
+      const order: RevealMode[] = ["flip", "scratch", "grid"];
+      return order.filter((m) => prev.includes(m) || m === id);
+    });
+  }
 
   const rosterNames = rosterOn
     ? rosterText
@@ -83,6 +106,7 @@ export function CreateDrawForm() {
           blankCount: Math.max(1, parseInt(blankCount, 10) || 1),
           voterNoteLabel: askName || rosterOn ? noteLabel.trim() : "",
           roster: rosterNames,
+          revealModes,
         },
       }),
     onSuccess: (draw) => {
@@ -331,6 +355,36 @@ export function CreateDrawForm() {
             </p>
           </>
         ) : null}
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <Label>揭晓方式</Label>
+        <div className="flex flex-wrap gap-2">
+          {REVEAL_OPTIONS.map((opt) => {
+            const on = revealModes.includes(opt.id);
+            return (
+              <button
+                key={opt.id}
+                type="button"
+                aria-pressed={on}
+                onClick={() => toggleRevealMode(opt.id)}
+                className={cn(
+                  "h-9 rounded-full border px-4 text-sm touch-manipulation transition-colors",
+                  on
+                    ? "border-accent/40 bg-surface-2 text-foreground"
+                    : "border-border text-muted hover:text-foreground",
+                )}
+              >
+                {opt.label}
+                <span className="ml-1.5 text-xs text-subtle">{opt.hint}</span>
+              </button>
+            );
+          })}
+        </div>
+        <p className="text-xs text-subtle">
+          可多选，参与者任选其一揭晓；{revealModes.length > 1 ? `已选 ${revealModes.length} 种` : "只选一种时不显示切换条"}。
+          无论哪种方式，中奖概率完全一致（结果由服务端统一抽取，动画只是演出）。
+        </p>
       </div>
 
       {error ? <p className="form-error text-sm text-muted">{error}</p> : null}

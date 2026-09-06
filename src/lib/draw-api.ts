@@ -27,7 +27,9 @@ export type {
   DrawSlot,
   DrawSummary,
   DrawView,
+  RevealMode,
 } from "./draw-repo";
+export { REVEAL_MODES } from "./draw-repo";
 export type { DrawAdminSummary } from "./draw-repo";
 
 const VOTER_COOKIE = "pulse_vk";
@@ -167,6 +169,12 @@ export const createDrawLive = createServerFn({ method: "POST" })
         blankCount: z.number().int().min(1).max(99999),
         voterNoteLabel: z.string().trim().max(20),
         roster: z.array(z.string().trim().min(1).max(40)).max(500),
+        // 揭晓方式:1-3 种,参与者只在被选中的方式里选;缺省三种全开。
+        revealModes: z
+          .array(z.enum(["flip", "scratch", "grid"]))
+          .min(1)
+          .max(3)
+          .optional(),
       }),
   )
   .handler(async ({ data, context }): Promise<DrawPoll> => {
@@ -185,6 +193,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
         ? "姓名"
         : data.voterNoteLabel.trim(),
       rosterNames: data.roster,
+      revealModes: data.revealModes,
     });
     const draw = await readDrawById(sql, key, id);
     if (!draw) throw new Error("创建失败");

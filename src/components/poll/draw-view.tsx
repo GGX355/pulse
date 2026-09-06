@@ -10,6 +10,7 @@ import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type {
   DrawRevealedView,
   DrawView as DrawViewData,
+  RevealMode,
 } from "@/lib/draw-repo";
 import { Input } from "@/components/ui/input";
 import { RosterPanel } from "@/components/poll/roster-panel";
@@ -29,13 +30,18 @@ import { jelly, confetti } from "@/lib/motion";
  * 会拿盲选数据渲染出 undefined/undefined。
  */
 
-type Mode = "flip" | "scratch" | "grid";
+type Mode = RevealMode;
 
 const MODES: Array<{ id: Mode; label: string }> = [
   { id: "flip", label: "🂠 翻牌" },
   { id: "scratch", label: "✦ 刮奖" },
   { id: "grid", label: "▦ 九宫格" },
 ];
+
+/** 发起人没选的模式不出现;当前档不在配置里时回落到第一个可选档。 */
+function pickMode(raw: Mode, allowed: Mode[]): Mode {
+  return allowed.includes(raw) ? raw : (allowed[0] ?? "flip");
+}
 
 const prefersReduced =
   typeof matchMedia !== "undefined" &&
@@ -60,7 +66,12 @@ export function DrawView({
   const draw = query.data ?? initialData;
 
   // 揭晓演出状态:结果落定后先演动画,再切全场结果。
-  const [mode, setMode] = useState<Mode>("flip");
+  const allowedModes: Mode[] = (() => {
+    const modes = initialData.revealModes;
+    return modes.length > 0 ? modes : ["flip", "scratch", "grid"];
+  })();
+  const [rawMode, setMode] = useState<Mode>(() => pickMode(allowedModes[0] ?? "flip", allowedModes));
+  const mode = pickMode(rawMode, allowedModes);
   const [wallRevealed, setWallRevealed] = useState(!initialData.blind);
   const [flipping, setFlipping] = useState(false);
   const [mySlotId, setMySlotId] = useState(initialData.myDraw?.slotId ?? null);
@@ -109,9 +120,10 @@ export function DrawView({
   }, [performing]);
 
   useEffect(() => {
+    const timers = gridTimers.current;
     return () => {
       if (rollTimer.current) window.clearInterval(rollTimer.current);
-      gridTimers.current.forEach((id) => window.clearTimeout(id));
+      timers.forEach((id) => window.clearTimeout(id));
     };
   }, []);
 
@@ -483,23 +495,25 @@ export function DrawView({
             </div>
           ) : null}
 
-          <div ref={segRef} className="seg glass" data-seg>
-            <span ref={segMoverRef} className="seg-mover" aria-hidden />
-            {MODES.map((m) => (
-              <button
-                key={m.id}
-                type="button"
-                className={cn("seg-item", mode === m.id && "on")}
-                onClick={() => {
-                  if (performing || rolling || flipping || scratchReady || gridRolling)
-                    return;
-                  setMode(m.id);
-                }}
-              >
-                {m.label}
-              </button>
-            ))}
-          </div>
+          {allowedModes.length > 1 ? (
+            <div ref={segRef} className="seg glass" data-seg>
+              <span ref={segMoverRef} className="seg-mover" aria-hidden />
+              {MODES.filter((m) => allowedModes.includes(m.id)).map((m) => (
+                <button
+                  key={m.id}
+                  type="button"
+                  className={cn("seg-item", mode === m.id && "on")}
+                  onClick={() => {
+                    if (performing || rolling || flipping || scratchReady || gridRolling)
+                      return;
+                    setMode(m.id);
+                  }}
+                >
+                  {m.label}
+                </button>
+              ))}
+            </div>
+          ) : null}
 
           <div ref={panelRef} className="glass stage-panel p-5">
             {/* 模式一:翻牌 */}

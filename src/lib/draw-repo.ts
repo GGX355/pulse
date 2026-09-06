@@ -11,10 +11,13 @@
  * right after is the per-person record; `unique (poll_id, voter_key)` makes
  * double draws impossible, and a lost race there reverts the claim.
  */
-import { randomInt } from "node:crypto";
-// node --experimental-strip-types 直接加载本文件跑测试,相对导入要带 .ts。
 import { rememberVoterName } from "./poll-repo.ts";
 import { rosterExists, rosterHas, rosterTaken, setRoster } from "./roster.ts";
+
+// 注意:本模块会经 draw-view → draw-api 的类型链进入客户端开发图,
+// 顶层 `import ... from "node:crypto"` 会让 Vite 每次加载抽签页都抛
+// "externalized for browser compatibility"。randomInt 只在 drawOne
+// (服务端函数处理器)里用,改为函数内动态导入。
 
 export type DrawSlot = {
   id: string;
@@ -25,6 +28,28 @@ export type DrawSlot = {
   /** null = 不限量,永远可抽。 */
   remaining: number | null;
 };
+
+/** 揭晓方式:发起人在后台配置,参与者只在被选中的方式里切换。 */
+export const REVEAL_MODES = ["flip", "scratch", "grid"] as const;
+export type RevealMode = (typeof REVEAL_MODES)[number];
+
+/** 归一化:过滤非法值、去重、按固定顺序输出;空集 = 未配置。 */
+export function normalizeRevealModes(
+  modes: readonly string[] | undefined,
+): RevealMode[] {
+  const set = new Set(
+    (modes ?? []).filter((m): m is RevealMode =>
+      (REVEAL_MODES as readonly string[]).includes(m),
+    ),
+  );
+  return REVEAL_MODES.filter((m) => set.has(m));
+}
+
+/** 解析列值;空/全非法时回落三种全开(与默认列值一致)。 */
+function parseRevealModes(col: string): RevealMode[] {
+  const modes = normalizeRevealModes(col.split(","));
+  return modes.length > 0 ? modes : [...REVEAL_MODES];
+}
 
 export type DrawPoll = {
   id: string;
@@ -42,6 +67,8 @@ export type DrawPoll = {
   voterNoteLabel: string;
   /** 我抽之前填的那条信息(通常就是名字);没填为 null。 */
   myNote: string | null;
+  /** 发起人选定的揭晓方式(1-3 种)。 */
+  revealModes: RevealMode[];
 };
 
 export type Sql = {
@@ -69,6 +96,8 @@ type DrawViewBase = {
   voterNoteLabel: string;
   /** 我自己填过的那条信息(盲选时也要带回,输入框才能预填)。 */
   myNote: string | null;
+  /** 发起人选定的揭晓方式(1-3 种);只选一种时前端不显示切换条。 */
+  revealModes: RevealMode[];
 };
 
 /** 盲选态:抽之前 —— 只有签位名字,没有数字,也没有"我抽到了什么"。 */
@@ -99,6 +128,7 @@ export function drawToView(draw: DrawPoll): DrawView {
     creatorId: draw.creatorId,
     voterNoteLabel: draw.voterNoteLabel,
     myNote: draw.myNote,
+    revealModes: draw.revealModes,
   };
   if (draw.closed || draw.myDraw) {
     return {
@@ -136,6 +166,8 @@ export type CreateDrawInput = {
   voterNoteLabel?: string;
   /** 名单核对:非空时仅名单内姓名可抽(以参与登记填写的姓名匹配)。 */
   rosterNames?: string[];
+  /** 揭晓方式(1-3 种);缺省 = 三种全开。 */
+  revealModes?: string[];
 };
 
 export async function createDraw(
@@ -149,10 +181,17 @@ export async function createDraw(
     input.rosterNames && input.rosterNames.length > 0
       ? input.voterNoteLabel?.trim() || "姓名"
       : input.voterNoteLabel?.trim() ?? "";
+  const modes = normalizeRevealModes(input.revealModes);
   await sql.query(
-    `insert into polls (id, question, creator_id, kind, voter_note_label)
-     values ($1, $2, $3, 'draw', $4)`,
-    [id, input.title, creatorId, noteLabel],
+    `insert into polls (id, question, creator_id, kind, voter_note_label, reveal_modes)
+     values ($1, $2, $3, 'draw', $4, $5)`,
+    [
+      id,
+      input.title,
+      creatorId,
+      noteLabel,
+      modes.length > 0 ? modes.join(",") : "flip,scratch,grid",
+    ],
   );
   let order = 0;
   for (const slot of input.slots) {
@@ -187,9 +226,10 @@ export async function readDrawById(
     creator_id: string | null;
     closed: boolean;
     voter_note_label: string;
+    reveal_modes: string;
   }>(
     `select id, question, creator_id, (closed_at is not null) as closed,
-            voter_note_label
+            voter_note_label, reveal_modes
      from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
@@ -244,6 +284,7 @@ export async function readDrawById(
     creatorId: poll.creator_id,
     voterNoteLabel: poll.voter_note_label.trim(),
     myNote: mine[0]?.voter_note.trim() || null,
+    revealModes: parseRevealModes(poll.reveal_modes),
   };
 }
 
@@ -325,6 +366,8 @@ export async function drawOne(
   }
 
   try {
+    // 见文件头:node:crypto 动态导入,避免进客户端图。
+    const { randomInt } = await import("node:crypto");
     for (let attempt = 0; attempt < 8; attempt += 1) {
       const open = state.slots.filter(
         (slot) => slot.remaining === null || slot.remaining > 0,
