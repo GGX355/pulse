@@ -157,6 +157,7 @@ export default defineConfig(({ command, isPreview }) => ({
     host: "127.0.0.1",
     port: 8081,
     strictPort: true,
+    allowedHosts: [".serveousercontent.com", "bore.pub", ".trycloudflare.com"],
   },
   resolve: { tsconfigPaths: true },
   plugins: [
