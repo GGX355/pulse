@@ -69,6 +69,8 @@ export type DrawPoll = {
   myNote: string | null;
   /** 发起人选定的揭晓方式(1-3 种)。 */
   revealModes: RevealMode[];
+  /** 标题下的可选备注;空 = 未填写(不渲染)。 */
+  description: string;
 };
 
 export type Sql = {
@@ -98,6 +100,8 @@ type DrawViewBase = {
   myNote: string | null;
   /** 发起人选定的揭晓方式(1-3 种);只选一种时前端不显示切换条。 */
   revealModes: RevealMode[];
+  /** 标题下的可选备注;空 = 未填写(不渲染)。 */
+  description: string;
 };
 
 /** 盲选态:抽之前 —— 只有签位名字,没有数字,也没有"我抽到了什么"。 */
@@ -129,6 +133,7 @@ export function drawToView(draw: DrawPoll): DrawView {
     voterNoteLabel: draw.voterNoteLabel,
     myNote: draw.myNote,
     revealModes: draw.revealModes,
+    description: draw.description,
   };
   if (draw.closed || draw.myDraw) {
     return {
@@ -168,6 +173,8 @@ export type CreateDrawInput = {
   rosterNames?: string[];
   /** 揭晓方式(1-3 种);缺省 = 三种全开。 */
   revealModes?: string[];
+  /** 标题下的可选备注。 */
+  description?: string;
 };
 
 export async function createDraw(
@@ -183,14 +190,15 @@ export async function createDraw(
       : input.voterNoteLabel?.trim() ?? "";
   const modes = normalizeRevealModes(input.revealModes);
   await sql.query(
-    `insert into polls (id, question, creator_id, kind, voter_note_label, reveal_modes)
-     values ($1, $2, $3, 'draw', $4, $5)`,
+    `insert into polls (id, question, creator_id, kind, voter_note_label, reveal_modes, description)
+     values ($1, $2, $3, 'draw', $4, $5, $6)`,
     [
       id,
       input.title,
       creatorId,
       noteLabel,
       modes.length > 0 ? modes.join(",") : "flip,scratch,grid",
+      input.description?.trim() ?? "",
     ],
   );
   let order = 0;
@@ -227,9 +235,10 @@ export async function readDrawById(
     closed: boolean;
     voter_note_label: string;
     reveal_modes: string;
+    description: string;
   }>(
     `select id, question, creator_id, (closed_at is not null) as closed,
-            voter_note_label, reveal_modes
+            voter_note_label, reveal_modes, description
      from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
@@ -285,6 +294,7 @@ export async function readDrawById(
     voterNoteLabel: poll.voter_note_label.trim(),
     myNote: mine[0]?.voter_note.trim() || null,
     revealModes: parseRevealModes(poll.reveal_modes),
+    description: poll.description.trim(),
   };
 }
 

@@ -513,6 +513,9 @@ export function DrawView({
           {draw.title}
           {draw.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
         </h1>
+        {draw.description ? (
+          <p className="content-desc mt-2">{draw.description}</p>
+        ) : null}
         <p className="mt-2 text-sm tabular-nums text-muted">{status}</p>
       </div>
 

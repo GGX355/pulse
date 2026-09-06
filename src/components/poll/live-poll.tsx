@@ -179,6 +179,9 @@ export function LivePollView({
           {poll.question}
           {poll.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
         </h1>
+        {poll.description ? (
+          <p className="content-desc mt-2">{poll.description}</p>
+        ) : null}
         <p className="mt-2 text-sm tabular-nums text-muted">
           共 {total} 票
           {poll.closed

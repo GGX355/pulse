@@ -17,6 +17,7 @@ import { Route as PollsRouteImport } from './routes/polls'
 import { Route as VoteRouteImport } from './routes/vote'
 import { Route as DrawIndexRouteImport } from './routes/draw.index'
 import { Route as DrawDrawIdRouteImport } from './routes/draw.$drawId'
+import { Route as DrawHistoryRouteImport } from './routes/draw.history'
 import { Route as DrawNewRouteImport } from './routes/draw.new'
 import { Route as PollPollIdRouteImport } from './routes/poll.$pollId'
 import { Route as ApiAuthSplatRouteImport } from './routes/api/auth/$'
@@ -61,6 +62,11 @@ const DrawDrawIdRoute = DrawDrawIdRouteImport.update({
   path: '/$drawId',
   getParentRoute: () => DrawRoute,
 } as any)
+const DrawHistoryRoute = DrawHistoryRouteImport.update({
+  id: '/history',
+  path: '/history',
+  getParentRoute: () => DrawRoute,
+} as any)
 const DrawNewRoute = DrawNewRouteImport.update({
   id: '/new',
   path: '/new',
@@ -85,6 +91,7 @@ export interface FileRoutesByFullPath {
   '/polls': typeof PollsRoute
   '/vote': typeof VoteRoute
   '/draw/$drawId': typeof DrawDrawIdRoute
+  '/draw/history': typeof DrawHistoryRoute
   '/draw/new': typeof DrawNewRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/draw/': typeof DrawIndexRoute
@@ -97,6 +104,7 @@ export interface FileRoutesByTo {
   '/polls': typeof PollsRoute
   '/vote': typeof VoteRoute
   '/draw/$drawId': typeof DrawDrawIdRoute
+  '/draw/history': typeof DrawHistoryRoute
   '/draw/new': typeof DrawNewRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/draw': typeof DrawIndexRoute
@@ -111,6 +119,7 @@ export interface FileRoutesById {
   '/polls': typeof PollsRoute
   '/vote': typeof VoteRoute
   '/draw/$drawId': typeof DrawDrawIdRoute
+  '/draw/history': typeof DrawHistoryRoute
   '/draw/new': typeof DrawNewRoute
   '/poll/$pollId': typeof PollPollIdRoute
   '/draw/': typeof DrawIndexRoute
@@ -126,6 +135,7 @@ export interface FileRouteTypes {
     | '/polls'
     | '/vote'
     | '/draw/$drawId'
+    | '/draw/history'
     | '/draw/new'
     | '/poll/$pollId'
     | '/draw/'
@@ -138,6 +148,7 @@ export interface FileRouteTypes {
     | '/polls'
     | '/vote'
     | '/draw/$drawId'
+    | '/draw/history'
     | '/draw/new'
     | '/poll/$pollId'
     | '/draw'
@@ -151,6 +162,7 @@ export interface FileRouteTypes {
     | '/polls'
     | '/vote'
     | '/draw/$drawId'
+    | '/draw/history'
     | '/draw/new'
     | '/poll/$pollId'
     | '/draw/'
@@ -226,6 +238,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DrawDrawIdRouteImport
       parentRoute: typeof DrawRoute
     }
+    '/draw/history': {
+      id: '/draw/history'
+      path: '/history'
+      fullPath: '/draw/history'
+      preLoaderRoute: typeof DrawHistoryRouteImport
+      parentRoute: typeof DrawRoute
+    }
     '/draw/new': {
       id: '/draw/new'
       path: '/new'
@@ -252,12 +271,14 @@ declare module '@tanstack/react-router' {
 
 interface DrawRouteChildren {
   DrawDrawIdRoute: typeof DrawDrawIdRoute
+  DrawHistoryRoute: typeof DrawHistoryRoute
   DrawNewRoute: typeof DrawNewRoute
   DrawIndexRoute: typeof DrawIndexRoute
 }
 
 const DrawRouteChildren: DrawRouteChildren = {
   DrawDrawIdRoute: DrawDrawIdRoute,
+  DrawHistoryRoute: DrawHistoryRoute,
   DrawNewRoute: DrawNewRoute,
   DrawIndexRoute: DrawIndexRoute,
 }

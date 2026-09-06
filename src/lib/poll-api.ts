@@ -79,6 +79,7 @@ export const createLivePoll = createServerFn({ method: "POST" })
       maxChoices: z.number().int().min(0).max(8),
       writeInLabel: z.string().trim().max(40),
       roster: z.array(z.string().trim().min(1).max(40)).max(500),
+      description: z.string().trim().max(120).optional(),
     }).refine(
       (data) => {
         const extra = data.writeInLabel ? 1 : 0;
@@ -106,6 +107,7 @@ export const createLivePoll = createServerFn({ method: "POST" })
       data.maxChoices,
       data.writeInLabel.trim(),
       data.roster,
+      data.description ?? "",
     );
     // 按刚创建的 id 读:不带 id 会读「最新进行中投票」,两管理员并发创建
     // 时创建者可能被带到别人的投票。

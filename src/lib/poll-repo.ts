@@ -38,6 +38,8 @@ export type LivePoll = {
   myNote: string | null;
   /** This voter_key's fill-in text when they picked the write-in option. */
   myWriteIn: string | null;
+  /** 标题下的可选备注;空 = 未填写(不渲染)。 */
+  description: string;
 };
 
 /** How many options a voter may pick on this poll (at least 1). */
@@ -102,9 +104,10 @@ export async function readPoll(
         closed: boolean;
         voter_note_label: string;
         max_choices: number;
+        description: string;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
-                voter_note_label, max_choices
+                voter_note_label, max_choices, description
          from polls where id = $1 limit 1`,
         [pollId],
       )
@@ -115,9 +118,10 @@ export async function readPoll(
         closed: boolean;
         voter_note_label: string;
         max_choices: number;
+        description: string;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
-                voter_note_label, max_choices
+                voter_note_label, max_choices, description
          from polls
          where kind = 'poll'
          order by (closed_at is null) desc, created_at desc
@@ -197,6 +201,7 @@ export async function readPoll(
     votedIds,
     maxChoices: Number(poll.max_choices),
     creatorId: poll.creator_id,
+    description: poll.description.trim(),
     closed: Boolean(poll.closed),
     voterNoteLabel: poll.voter_note_label,
     myNote,
@@ -247,12 +252,13 @@ export async function createPoll(
   maxChoices = 1,
   writeInLabel = "",
   rosterNames: string[] = [],
+  description = "",
 ): Promise<string> {
   const id = crypto.randomUUID();
   await sql.query(
-    `insert into polls (id, question, creator_id, voter_note_label, max_choices)
-     values ($1, $2, $3, $4, $5)`,
-    [id, question, creatorId ?? null, voterNoteLabel, maxChoices],
+    `insert into polls (id, question, creator_id, voter_note_label, max_choices, description)
+     values ($1, $2, $3, $4, $5, $6)`,
+    [id, question, creatorId ?? null, voterNoteLabel, maxChoices, description.trim()],
   );
   for (let i = 0; i < labels.length; i += 1) {
     await sql.query(

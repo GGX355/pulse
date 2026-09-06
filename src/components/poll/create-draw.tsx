@@ -48,6 +48,7 @@ export function CreateDrawForm() {
   const navigate = useNavigate();
   const { user, isPending } = useCurrentUserState();
   const [title, setTitle] = useState("抽签决定谁去？");
+  const [description, setDescription] = useState("");
   const [slots, setSlots] = useState<SlotRow[]>([
     { label: "一等奖", count: "1" },
     { label: "二等奖", count: "2" },
@@ -97,6 +98,7 @@ export function CreateDrawForm() {
       createDrawLive({
         data: {
           title: title.trim(),
+          description: description.trim(),
           slots: filled.map((slot) => ({
             label: slot.label.trim(),
             count: Math.max(1, parseInt(slot.count, 10) || 1),
@@ -172,6 +174,13 @@ export function CreateDrawForm() {
           maxLength={80}
           onChange={(e) => setTitle(e.target.value)}
           placeholder="抽什么?"
+        />
+        <Input
+          value={description}
+          maxLength={120}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="备注(可选)：显示在标题下方，如规则、截止时间"
+          aria-label="备注"
         />
       </div>
 

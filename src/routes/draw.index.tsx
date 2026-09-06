@@ -1,112 +1,51 @@
 import { createFileRoute, Link } from "@tanstack/react-router";
-import { fetchDrawList } from "@/lib/draw-api";
-import { useCanDelete, useDeleteContent } from "@/lib/content-admin";
+import { DrawView } from "@/components/poll/draw-view";
+import { fetchLiveDraw } from "@/lib/draw-api";
 
+/**
+ * 「抽签」入口 = 与「投票」同一逻辑:点进来直接是当前(最新)抽签,
+ * 历史列表在 /draw/history。
+ */
 export const Route = createFileRoute("/draw/")({
-  loader: () => fetchDrawList(),
-  component: DrawsPage,
+  loader: () => fetchLiveDraw(),
+  component: LiveDrawPage,
 });
 
-function formatDate(ms: number) {
-  return new Date(ms).toLocaleString("zh-CN", {
-    month: "numeric",
-    day: "numeric",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
+function LiveDrawPage() {
+  const draw = Route.useLoaderData();
 
-function DrawsPage() {
-  const draws = Route.useLoaderData();
-  const canDelete = useCanDelete();
-  const del = useDeleteContent();
+  if (!draw) {
+    return (
+      <>
+        <p className="text-xs font-medium tracking-wide text-muted">抽签</p>
+        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
+          暂无进行中的抽签
+        </h1>
+        <p className="mt-3 text-sm text-muted">
+          发起一场即可现场扫码参与。
+          <Link to="/draw/new" className="ml-2 text-foreground underline">
+            新建抽签
+          </Link>
+        </p>
+        <p className="mt-10 text-sm text-muted">
+          投票内容见
+          <Link to="/polls" className="ml-2 text-foreground underline">
+            投票历史
+          </Link>
+        </p>
+      </>
+    );
+  }
 
   return (
     <>
-      <div className="mb-8 flex items-end justify-between gap-3">
-        <div>
-          <h1 className="font-display text-2xl font-semibold tracking-tight">
-            抽签历史
-          </h1>
-          <p className="mt-2 text-sm text-muted">盲选模式，参与后可见结果。</p>
-        </div>
-        <Link
-          to="/draw/new"
-          className="shrink-0 rounded-full border border-border px-4 py-2 text-sm text-muted touch-manipulation transition-colors hover:text-foreground"
-        >
-          新建抽签
-        </Link>
+      <div key={draw.id}>
+        <DrawView initialData={draw} pollId={draw.id} />
       </div>
-
-      {draws.length === 0 ? (
-        <p className="text-sm text-muted">
-          暂无抽签。
-          <Link to="/draw/new" className="ml-2 text-foreground underline">
-            新建
-          </Link>
-        </p>
-      ) : (
-        <div className="flex flex-col divide-y divide-border">
-          {draws.map((draw, index) => (
-            <div key={draw.id} className="flex items-center">
-              <Link
-                to="/draw/$drawId"
-                params={{ drawId: draw.id }}
-                className="min-w-0 flex-1 flex items-center justify-between gap-3 py-4 touch-manipulation hover:opacity-80"
-                style={{ animationDelay: `${Math.min(index, 8) * 45}ms` }}
-              >
-                <span className="min-w-0">
-                  <span className="flex items-center gap-2">
-                    <span className="truncate font-medium text-foreground">
-                      {draw.title}
-                    </span>
-                    {draw.closed ? (
-                      <span className="shrink-0 rounded-full border border-border px-2 py-0.5 text-xs text-subtle">
-                        已结束
-                      </span>
-                    ) : (
-                      <span className="shrink-0 rounded-full border border-accent/30 px-2 py-0.5 text-xs text-accent">
-                        <span className="live-dot mr-1.5 inline-block size-1.5 rounded-full bg-accent align-middle" />
-                        进行中
-                      </span>
-                    )}
-                  </span>
-                  <span
-                    className="mt-1 block text-xs tabular-nums text-muted"
-                    suppressHydrationWarning
-                  >
-                    {formatDate(draw.createdAtMs)}
-                  </span>
-                </span>
-                <span className="shrink-0 text-sm tabular-nums text-muted">
-                  {draw.total === null ? "保密" : `${draw.total} 人参与`}
-                </span>
-              </Link>
-              {canDelete(draw.creatorId) ? (
-                <button
-                  type="button"
-                  aria-label={`删除${draw.title}`}
-                  title="删除"
-                  className="shrink-0 rounded-full px-2 py-1 text-base leading-none text-subtle transition-colors hover:bg-red-500/10 hover:text-red-500"
-                  onClick={(e) => {
-                    e.preventDefault();
-                    if (window.confirm(`确定删除「${draw.title}」？删除后不可恢复。`)) {
-                      del.mutate(draw.id);
-                    }
-                  }}
-                >
-                  ✕
-                </button>
-              ) : null}
-            </div>
-          ))}
-        </div>
-      )}
-
       <p className="mt-10 text-sm text-muted">
-        投票内容见
-        <Link to="/polls" className="ml-2 text-foreground underline">
-          投票历史
+        往期抽签见
+        <Link to="/draw/history" className="ml-2 text-foreground underline">
+          抽签历史
         </Link>
       </p>
     </>

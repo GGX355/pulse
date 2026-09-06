@@ -1034,3 +1034,10 @@ main h1 {
   color: var(--color-accent);
   animation: shake-x 0.38s ease;
 }
+
+/* 标题下的可选备注:比标题小一档的说明行 */
+.content-desc {
+  font-size: var(--fs-subhead);
+  line-height: 1.6;
+  color: var(--color-muted);
+}

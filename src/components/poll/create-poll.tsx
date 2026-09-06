@@ -21,6 +21,7 @@ export function CreatePollForm() {
   const queryClient = useQueryClient();
   const { user, isPending } = useCurrentUserState();
   const [question, setQuestion] = useState("午饭吃什么？");
+  const [description, setDescription] = useState("");
   const [options, setOptions] = useState(["拉面", "便当", "沙拉", ""]);
   const [askNote, setAskNote] = useState(false);
   const [noteLabel, setNoteLabel] = useState("名字");
@@ -45,6 +46,7 @@ export function CreatePollForm() {
       createLivePoll({
         data: {
           question,
+          description: description.trim(),
           options: options.map((o) => o.trim()).filter(Boolean),
           voterNoteLabel: askNote || rosterOn ? noteLabel.trim() : "",
           maxChoices:
@@ -127,6 +129,13 @@ export function CreatePollForm() {
           maxLength={80}
           onChange={(e) => setQuestion(e.target.value)}
           placeholder="输入问题"
+        />
+        <Input
+          value={description}
+          maxLength={120}
+          onChange={(e) => setDescription(e.target.value)}
+          placeholder="备注(可选)：显示在标题下方，如活动说明、截止时间"
+          aria-label="备注"
         />
       </div>
 

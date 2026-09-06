@@ -169,6 +169,8 @@ export const createDrawLive = createServerFn({ method: "POST" })
         blankCount: z.number().int().min(1).max(99999),
         voterNoteLabel: z.string().trim().max(20),
         roster: z.array(z.string().trim().min(1).max(40)).max(500),
+        // 标题下的可选备注。
+        description: z.string().trim().max(120).optional(),
         // 揭晓方式:1-3 种,参与者只在被选中的方式里选;缺省三种全开。
         revealModes: z
           .array(z.enum(["flip", "scratch", "grid"]))
@@ -194,6 +196,7 @@ export const createDrawLive = createServerFn({ method: "POST" })
         : data.voterNoteLabel.trim(),
       rosterNames: data.roster,
       revealModes: data.revealModes,
+      description: data.description,
     });
     const draw = await readDrawById(sql, key, id);
     if (!draw) throw new Error("创建失败");
@@ -214,6 +217,24 @@ export const drawLiveOnce = createServerFn({ method: "POST" })
     // 抽完 myDraw 必有值 → drawToView 返回的是全量揭示视图。
     return drawToView(await drawOne(sql, key, data.pollId, data.note ?? ""));
   });
+
+/** 「抽签」页的当前频道:最新进行中的抽签,否则最新一场(含已结束)。 */
+export const fetchLiveDraw = createServerFn({ method: "GET" }).handler(
+  async (): Promise<DrawView | null> => {
+    const sql = await getDb();
+    const key = voterKey();
+    const rows = await sql.query<{ id: string }>(
+      `select id from polls
+       where kind = 'draw'
+       order by (closed_at is null) desc, created_at desc
+       limit 1`,
+    );
+    const row = rows[0];
+    if (!row) return null;
+    const draw = await readDrawById(sql, key, row.id);
+    return draw ? drawToView(draw) : null;
+  },
+);
 
 /** 发起人删除历史(投票/抽签共表,级联清干净);无主历史登录者可清理。 */
 export const deleteContent = createServerFn({ method: "POST" })

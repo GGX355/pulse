@@ -109,7 +109,7 @@ function Home() {
           </div>
           <p className="mt-10 text-sm text-muted">
             往期抽签见
-            <Link to="/draw" className="ml-2 text-foreground underline">
+            <Link to="/draw/history" className="ml-2 text-foreground underline">
               抽签历史
             </Link>
           </p>
