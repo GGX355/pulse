@@ -29,10 +29,9 @@ function apply(pref: ThemePref) {
   document.documentElement.dataset.theme = resolvedTheme(pref);
   const btn = document.querySelector<HTMLButtonElement>(".theme-btn");
   if (btn) {
-    // emoji 与文字分开放:窄屏 CSS 隐藏文字,按钮收成小圆钮不挤爆头部。
     const emoji = pref === "system" ? "🌗" : pref === "dark" ? "🌙" : "☀️";
-    const label = pref === "system" ? "系统" : pref === "dark" ? "黑夜" : "白天";
-    btn.innerHTML = `<span class="theme-emoji" aria-hidden="true">${emoji}</span><span class="theme-text">${label}</span>`;
+    const label = pref === "system" ? "跟随系统" : pref === "dark" ? "黑夜" : "白天";
+    btn.textContent = emoji;
     btn.title = "当前：" + label + "（点击切换）";
     btn.setAttribute("aria-label", "主题：" + label);
   }

@@ -1,6 +1,17 @@
 @import "tailwindcss";
 @import "tw-animate-css";
 
+/* ── 自托管 Inter(苹果 SF 的开源近似形):Latin 全局一致,CJK 走系统栈 ──
+   之前依赖 fonts.cdnfonts/google 外链,弱网/被墙环境直接卡首屏;
+   现在打包进 public/fonts,离线也可用。 */
+@font-face {
+  font-family: "Inter";
+  src: url("/fonts/InterVariable.woff2") format("woff2-variations");
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
 /* ═══════════════════════════════════════════════════════════════
    Pulse 设计系统 · Liquid Glass（苹果液态玻璃）
    依据：Apple HIG（字阶/间距/触控）+ WWDC25 三层模型
@@ -987,14 +998,8 @@ main h1 {
 
 
 
-/* 手机上主题按钮只留 emoji、导航更紧凑,给窄屏头部腾地方 */
+/* 主题按钮全平台纯图标;窄屏导航更紧凑 */
 @media (max-width: 480px) {
-  .theme-btn .theme-text {
-    display: none;
-  }
-  .theme-btn {
-    padding: 8px 10px;
-  }
   .nav-shell .nav-link {
     padding-inline: 8px;
   }

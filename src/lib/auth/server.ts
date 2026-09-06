@@ -105,10 +105,22 @@ const LOCAL_DEV_ORIGINS: string[] = [
   "http://127.0.0.1:8080",
   "http://[::1]:8080",
 ];
+// 隧道/自托管预览:BETTER_AUTH_EXTRA_ORIGINS 里逗号分隔的额外信任来源
+// (完整 origin 或裸 host 均可),用于内网穿透域名下的登录。
+const extraOriginList = (env("BETTER_AUTH_EXTRA_ORIGINS") ?? "")
+  .split(/[,\s]+/)
+  .filter(Boolean);
+
 const baseURL = explicitBaseURL ?? {
   // Include loopback hosts so dynamic baseURL resolves for local email/password
   // (not only the preview wildcard).
-  allowedHosts: [...previewAllowedHosts, "localhost", "127.0.0.1", "[::1]"],
+  allowedHosts: [
+    ...previewAllowedHosts,
+    ...extraOriginList.map((o) => o.replace(/^https?:\/\//, "")),
+    "localhost",
+    "127.0.0.1",
+    "[::1]",
+  ],
   // `auto` → trust both http:// and https:// expansions of allowedHosts
   // (preview is https; local dev is http).
   protocol: "auto" as const,
@@ -117,15 +129,18 @@ const baseURL = explicitBaseURL ?? {
 
 // Origins Better Auth accepts on credentialed POSTs (sign-up/sign-in, etc.).
 // Missing entries here surface as FORBIDDEN "Invalid origin".
-const trustedOrigins: string[] = explicitBaseURL
-  ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
-  : [
-      // Host wildcards (matched against Origin's host)
-      ...previewAllowedHosts,
-      // Full-origin wildcards (matched against Origin)
-      ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
-      ...LOCAL_DEV_ORIGINS,
-    ];
+const trustedOrigins: string[] = [
+  ...(explicitBaseURL
+    ? [explicitBaseURL, ...LOCAL_DEV_ORIGINS]
+    : [
+        // Host wildcards (matched against Origin's host)
+        ...previewAllowedHosts,
+        // Full-origin wildcards (matched against Origin)
+        ...previewAllowedHosts.flatMap((host) => [`https://${host}`, `http://${host}`]),
+        ...LOCAL_DEV_ORIGINS,
+      ]),
+  ...extraOriginList,
+];
 
 const databaseUrl = env("DATABASE_URL");
 
@@ -206,11 +221,12 @@ export const auth = betterAuth({
     },
   },
 
-  // Cache the session in the short-lived signed `session_data` cookie so reads
-  // (incl. the client's `/get-session`) skip the DB — this shrinks the "loading"
-  // window and reduces auth flicker. See the `auth` skill for the full
-  // flicker-prevention guidance (gate on `isPending`; SSR the session).
-  session: { cookieCache: { enabled: true, maxAge: 300 } },
+  // session cookieCache 必须关:开启时 sign-in 会同时下发 session_token 与
+  // session_data 两个 Set-Cookie,经 tanstackStartCookies 桥接后只剩
+  // session_data(多 Set-Cookie 被折叠),主凭证丢失 → 永远登录不上(实测)。
+  // 关掉后只下发单一 session_token,登录恢复正常;代价是 get-session 多一次
+  // DB 读取,本应用体量下可忽略。
+  session: {},
 
   // Local email/password — toggled only via `./email-password` (not a plugin).
   ...(emailAndPasswordEnabled ? { emailAndPassword: { enabled: true } } : {}),

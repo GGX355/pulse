@@ -386,9 +386,11 @@ export function DrawView({
      真实签位按顺序摊进 8 个外格;签位多于 8 个时,超出部分的结果落在
      兜底格,横幅(band)仍显示真实结果。 */
   function gridLabels(): string[] {
+    // 8 格全部用真实签位名循环铺满(与审核版模板一致);签位数 >8 时
+    // 取前 8 个展示。格子只是演出,概率由服务端按签位剩余加权计算。
     const real = slots.map((s) => s.label);
-    const filler = real.includes("谢谢参与") ? "谢谢参与" : "未抽中";
-    return Array.from({ length: 8 }, (_, i) => real[i] ?? filler);
+    if (real.length === 0) return Array.from({ length: 8 }, () => "未抽中");
+    return Array.from({ length: 8 }, (_, i) => real[i % real.length]);
   }
   function gridStart() {
     if (!canDraw()) return;
@@ -410,8 +412,7 @@ export function DrawView({
     const cells = gridLabels();
     const order = [0, 1, 2, 4, 7, 6, 5, 3];
     const found = cells.findIndex((l) => l === label);
-    const fillerCell = cells.indexOf("未抽中");
-    const winCell = found >= 0 ? found : fillerCell >= 0 ? fillerCell : 0;
+    const winCell = found >= 0 ? found : 0;
     const winPos = order.indexOf(winCell);
     const landing = 14 + ((winPos + 8) % 8);
     const steps: Array<{ cell: number; delay: number }> = [];
