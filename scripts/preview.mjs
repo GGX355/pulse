@@ -297,9 +297,21 @@ async function restart() {
 
   mkdirSync(dirname(LOG_FILE), { recursive: true });
   const log = openSync(LOG_FILE, "a");
+  // 固定 BETTER_AUTH_SECRET:预览重启不再轮换密钥(否则所有旧会话失效,
+  // 用户每次都被登出)。密钥文件在 .grok/ 下,缺失时生成。
+  const secretFile = join(ROOT, ".grok", "better-auth-secret");
+  let previewSecret = "";
+  try {
+    previewSecret = readFileSync(secretFile, "utf8").trim();
+  } catch {
+    previewSecret = Array.from({ length: 64 }, () => "0123456789abcdef"[Math.floor(Math.random() * 16)]).join("");
+    mkdirSync(join(ROOT, ".grok"), { recursive: true });
+    writeFileSync(secretFile, previewSecret);
+  }
   const child = spawn("npm", ["run", "preview"], {
     cwd: ROOT,
     detached: true,
+    env: { ...process.env, BETTER_AUTH_SECRET: previewSecret },
     stdio: ["ignore", log, log],
   });
   child.unref();

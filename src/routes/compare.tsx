@@ -96,7 +96,6 @@ function ComparePage() {
   const boardRef = useRef<HTMLDivElement | null>(null);
   const [ready, setReady] = useState(false);
   // 拖拽状态
-  const dragRef = useRef({ dragging: false, sx: 0, sy: 0, ox: 0, oy: 0 });
 
   // B 板:挂 SVG 位移滤镜 → 折射层(CSS filter:url)生效;无滤镜时退化为透明板
   useEffect(() => {
