@@ -297,6 +297,8 @@ main h1 {
   position: relative;
   z-index: 1;
   border-radius: var(--r-pill);
+  font-size: var(--fs-subhead);
+  padding: 8px 14px;
   transition: color 0.25s ease, transform 0.5s cubic-bezier(0.28, 1.7, 0.4, 1);
 }
 .nav-link:active {
@@ -306,9 +308,13 @@ main h1 {
 .theme-btn {
   position: relative;
   z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
   border: none;
   border-radius: var(--r-pill);
-  padding: 8px 12px;
+  padding: 7px 11px;
   cursor: pointer;
   background: var(--mover-bg);
   box-shadow: var(--mover-shadow);
@@ -316,6 +322,7 @@ main h1 {
   font-size: var(--fs-subhead);
   font-weight: 600;
   font-family: var(--font-sans);
+  line-height: 1.4;
   transition: transform 0.5s cubic-bezier(0.28, 1.7, 0.4, 1);
 }
 .theme-btn:active {
@@ -876,9 +883,9 @@ main h1 {
   box-shadow: var(--rim-sm);
   overflow: hidden;
   transition:
-    transform 0.12s ease,
-    border-color 0.12s ease,
-    box-shadow 0.12s ease;
+    transform 0.08s var(--ease-out-expo),
+    border-color 0.08s ease,
+    box-shadow 0.08s ease;
 }
 .cell9 > span:first-child {
   font-size: var(--fs-footnote);
@@ -895,7 +902,10 @@ main h1 {
   box-shadow:
     0 0 0 2px color-mix(in oklab, var(--color-accent) 16%, transparent),
     var(--rim-sm);
-  transform: translateY(-2px) scale(1.03);
+  transform: translateY(-3px) scale(1.07);
+}
+.cell9.lit > span:first-child {
+  color: var(--color-accent);
 }
 .cell9.win {
   border-color: color-mix(in oklab, var(--color-accent) 70%, var(--glass-border));
@@ -910,23 +920,33 @@ main h1 {
 }
 .go9 {
   aspect-ratio: 1;
-  border: 0;
+  border: 1px solid var(--glass-border);
   border-radius: var(--r-sm);
-  background: var(--mover-bg);
-  box-shadow: var(--mover-shadow);
+  background: var(--glass-bg);
+  backdrop-filter: var(--glass-bf);
+  -webkit-backdrop-filter: var(--glass-bf);
+  box-shadow: none;
   font-family: var(--font-sans);
   font-size: var(--fs-subhead);
-  font-weight: 700;
-  color: var(--color-foreground);
+  font-weight: 600;
+  color: var(--color-muted);
   cursor: pointer;
-  transition: transform 0.4s cubic-bezier(0.28, 1.7, 0.4, 1);
+  transition:
+    transform 0.35s cubic-bezier(0.28, 1.7, 0.4, 1),
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+.go9:hover:not(:disabled) {
+  color: var(--color-accent);
+  border-color: color-mix(in oklab, var(--color-accent) 45%, var(--glass-border));
+  transform: translateY(-2px);
 }
 .go9:active:not(:disabled) {
   transform: scale(0.94);
   transition-duration: 0.08s;
 }
 .go9:disabled {
-  opacity: 0.6;
+  opacity: 0.55;
   cursor: default;
 }
 .band {
@@ -965,9 +985,7 @@ main h1 {
   pointer-events: none;
 }
 
-.theme-btn .theme-emoji {
-  margin-right: 4px;
-}
+
 
 /* 手机上主题按钮只留 emoji、导航更紧凑,给窄屏头部腾地方 */
 @media (max-width: 480px) {

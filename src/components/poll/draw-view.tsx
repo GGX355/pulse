@@ -413,7 +413,7 @@ export function DrawView({
     const fillerCell = cells.indexOf("未抽中");
     const winCell = found >= 0 ? found : fillerCell >= 0 ? fillerCell : 0;
     const winPos = order.indexOf(winCell);
-    const landing = 22 + ((winPos + 8) % 8);
+    const landing = 14 + ((winPos + 8) % 8);
     const steps: Array<{ cell: number; delay: number }> = [];
     for (let i = 0; i <= landing; i++) {
       const t = i / landing;
@@ -421,9 +421,9 @@ export function DrawView({
         cell: order[i % 8],
         delay: prefersReduced
           ? 0
-          : t < 0.72
-            ? 105
-            : 105 + Math.pow((t - 0.72) / 0.28, 1.6) * 480,
+          : t < 0.7
+            ? 65
+            : 65 + Math.pow((t - 0.7) / 0.3, 1.5) * 330,
       });
     }
     let acc = 0;
@@ -599,7 +599,7 @@ export function DrawView({
             {/* 模式三:九宫格 */}
             <div className={cn("stage", mode === "grid" && "on")} id="stage-grid">
               <div className="grid9">
-                {gridLabels().map((label, cell) => {
+                {gridLabels().slice(0, 4).map((label, cell) => {
                   const isWin = gridWinLabel === label && gridDone;
                   return (
                     <div
@@ -621,6 +621,20 @@ export function DrawView({
                 >
                   {mySlotId !== null ? "已抽完" : gridRolling ? "…" : "开始"}
                 </button>
+                {gridLabels().slice(4).map((label, i) => {
+                  const cell = i + 4;
+                  const isWin = gridWinLabel === label && gridDone;
+                  return (
+                    <div
+                      key={cell}
+                      data-cell={cell}
+                      className={cn("cell9", isWin && "win")}
+                    >
+                      <span>{label}</span>
+                      <span className="s">{isWin ? "你的签" : "保密中"}</span>
+                    </div>
+                  );
+                })}
               </div>
               <div className="band" id="grid-band" aria-live="polite">
                 {gridWinLabel ? (
