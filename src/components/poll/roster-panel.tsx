@@ -14,7 +14,9 @@ export function RosterPanel({
   creatorId: string | null;
 }) {
   const { user } = useCurrentUserState();
-  const isCreator = Boolean(user) && user?.id === creatorId;
+  // 无主(建号系统前)历史:登录者可视作发起人管理(与服务端守卫一致)。
+  const isCreator =
+    Boolean(user) && (creatorId === null || user?.id === creatorId);
   const query = useQuery({
     queryKey: ["roster", pollId],
     queryFn: () => fetchRosterStatus({ data: { pollId } }),

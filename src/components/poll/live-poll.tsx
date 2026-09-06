@@ -294,15 +294,40 @@ function VoteDetailsPanel({ pollId }: { pollId: string }) {
     enabled: isCreator,
     refetchInterval: 3000,
   });
+  const [copied, setCopied] = useState(false);
+
+  function exportDetails() {
+    if (!query.data) return;
+    const lines = query.data.map(
+      (row, index) =>
+        `${index + 1}\t${new Date(row.atMs).toLocaleString("zh-CN")}\t${row.name}\t${row.choice}`,
+    );
+    void navigator.clipboard
+      .writeText(["时间\t姓名\t选择", ...lines].join("\n"))
+      .then(() => {
+        setCopied(true);
+        window.setTimeout(() => setCopied(false), 1600);
+      })
+      .catch(() => undefined);
+  }
 
   if (!isCreator || !query.data || query.data.length === 0) return null;
   const rows = query.data;
 
   return (
-    <details className="mt-2 rounded-xl border border-border bg-surface p-4">
-      <summary className="cursor-pointer text-xs font-medium tracking-wide text-muted">
-        参与明细（{rows.length} 人）
-      </summary>
+    <details className="mt-2 rounded-xl border border-border bg-surface p-4" open>
+      <div className="flex items-center justify-between gap-3">
+        <summary className="cursor-pointer text-xs font-medium tracking-wide text-muted">
+          参与明细（{rows.length} 人）
+        </summary>
+        <button
+          type="button"
+          onClick={exportDetails}
+          className="rounded-full border border-border px-3 py-1 text-xs text-muted transition-colors hover:text-foreground"
+        >
+          {copied ? "已复制" : "导出名单"}
+        </button>
+      </div>
       <div className="mt-3 flex flex-col divide-y divide-border">
         {rows.map((row, index) => (
           <div

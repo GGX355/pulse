@@ -519,8 +519,11 @@ export async function drawClaimList(
     [pollId],
   );
   if (!polls[0]) throw new Error("没有这个抽签");
-  // 结果已公示 → 任何人可看;否则仅发起人。
-  if (!polls[0].results_public && polls[0].creator_id !== userId) {
+  // 可见性:结果已公示 → 任何人;无主(建号系统前)历史 → 登录者;
+  // 其余仅发起人。
+  const isOwner = polls[0].creator_id !== null && polls[0].creator_id === userId;
+  const isOrphan = polls[0].creator_id === null && userId;
+  if (!polls[0].results_public && !isOwner && !isOrphan) {
     throw new Error("只有发起人能看兑奖名单");
   }
 
