@@ -81,6 +81,7 @@ export function DrawView({
   const [scratchReady, setScratchReady] = useState(false);
   const [gridRolling, setGridRolling] = useState(false);
   const [gridWinLabel, setGridWinLabel] = useState<string | null>(null);
+  const [gridWinCell, setGridWinCell] = useState<number | null>(null);
   const [gridDone, setGridDone] = useState(false);
   // 抽之前要填的那条信息(通常就是名字);服务端会再校验一次。
   const [note, setNote] = useState(initialData.myNote ?? "");
@@ -441,8 +442,10 @@ export function DrawView({
     setGridRolling(true);
     const cells = gridLabels();
     const order = [0, 1, 2, 4, 7, 6, 5, 3];
-    const found = cells.findIndex((l) => l === label);
-    const winCell = found >= 0 ? found : 0;
+    // 同名签位可能占据多个格子:随机挑一个落定,只亮这一格。
+    const matches = cells.map((l, i) => (l === label ? i : -1)).filter((i) => i >= 0);
+    const winCell =
+      matches.length > 0 ? matches[Math.floor(Math.random() * matches.length)] : 0;
     const winPos = order.indexOf(winCell);
     const landing = 14 + ((winPos + 8) % 8);
     const steps: Array<{ cell: number; delay: number }> = [];
@@ -469,6 +472,7 @@ export function DrawView({
         if (k === steps.length - 1) {
           el?.classList.remove("lit");
           el?.classList.add("win");
+          setGridWinCell(winCell);
           setGridWinLabel(label);
           setGridDone(true);
           finishReveal(label);
@@ -641,7 +645,7 @@ export function DrawView({
             <div className={cn("stage", mode === "grid" && "on")} id="stage-grid">
               <div className="grid9">
                 {gridLabels().slice(0, 4).map((label, cell) => {
-                  const isWin = gridWinLabel === label && gridDone;
+                  const isWin = gridWinCell === cell && gridDone;
                   return (
                     <div
                       key={cell}
@@ -664,7 +668,7 @@ export function DrawView({
                 </button>
                 {gridLabels().slice(4).map((label, i) => {
                   const cell = i + 4;
-                  const isWin = gridWinLabel === label && gridDone;
+                  const isWin = gridWinCell === cell && gridDone;
                   return (
                     <div
                       key={cell}
