@@ -340,7 +340,9 @@ main h1 {
   gap: 4px;
   border: none;
   border-radius: var(--r-pill);
-  padding: 7px 11px;
+  width: 38px;
+  height: 38px;
+  padding: 0;
   cursor: pointer;
   background: var(--mover-bg);
   box-shadow: var(--mover-shadow);
@@ -1069,8 +1071,8 @@ main h1 {
   }
   .nav-shell .theme-btn {
     font-size: 20px;
-    width: 54px;
-    height: 50px;
+    width: 48px;
+    height: 48px;
   }
 }
 
@@ -1129,3 +1131,29 @@ main h1 {
 .btn:active:not(:disabled) {
   transition-duration: 0.08s;
 }
+
+/* 玻璃面板内按钮:按压缩放反馈(推拉手感) */
+.glass button:not(:disabled):active {
+  transform: scale(0.94);
+}
+.glass button {
+  transition:
+    transform 0.3s cubic-bezier(0.28, 1.7, 0.4, 1),
+    background-color 0.2s ease,
+    color 0.2s ease,
+    border-color 0.2s ease;
+}
+
+/* 表单子项错峰入场(推拉动效) */
+form.glass > * {
+  animation:
+    fade-in 0.35s var(--ease-out-expo) both,
+    pop-in 0.45s var(--ease-spring) both;
+}
+form.glass > *:nth-child(2) { animation-delay: 0.05s; }
+form.glass > *:nth-child(3) { animation-delay: 0.1s; }
+form.glass > *:nth-child(4) { animation-delay: 0.15s; }
+form.glass > *:nth-child(5) { animation-delay: 0.2s; }
+form.glass > *:nth-child(6) { animation-delay: 0.25s; }
+form.glass > *:nth-child(7) { animation-delay: 0.3s; }
+form.glass > *:nth-child(8) { animation-delay: 0.35s; }

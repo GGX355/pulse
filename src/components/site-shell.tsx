@@ -159,7 +159,7 @@ export function SiteShell({ children }: { children: ReactNode }) {
                 asChild
                 variant="ghost"
                 size="sm"
-                className="shrink-0 rounded-full border border-transparent bg-[var(--mover-bg)] text-foreground shadow-[var(--mover-shadow)] hover:bg-[var(--mover-bg)] hover:text-foreground"
+                className="h-10 shrink-0 rounded-full border border-transparent bg-[var(--mover-bg)] px-5 text-[15px] font-semibold text-foreground shadow-[var(--mover-shadow)] hover:bg-[var(--mover-bg)] hover:text-foreground md:h-12 md:px-7 md:text-[17px]"
               >
                 <Link to="/login">登录</Link>
               </Button>
