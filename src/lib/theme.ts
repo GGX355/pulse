@@ -48,7 +48,12 @@ export function initTheme(): { cycle: () => void; dispose: () => void } {
     cycle: () => {
       pref = pref === "system" ? "dark" : pref === "dark" ? "light" : "system";
       localStorage.setItem(KEY, pref);
-      apply(pref);
+      // View Transitions：整页交叉淡化，主题切换顺滑
+      const doc = document as Document & {
+        startViewTransition?: (cb: () => void) => unknown;
+      };
+      if (doc.startViewTransition) doc.startViewTransition(() => apply(pref));
+      else apply(pref);
     },
     dispose: () => {
       colorScheme?.removeEventListener("change", onSchemeChange);
