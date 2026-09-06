@@ -12,6 +12,7 @@ import {
   listDraws,
   listDrawsAdmin,
   readDrawById,
+  setResultsPublic,
   type DrawAdminStats,
   type DrawAdminSummary,
   type DrawClaim,
@@ -216,6 +217,23 @@ export const drawLiveOnce = createServerFn({ method: "POST" })
     const key = voterKey();
     // 抽完 myDraw 必有值 → drawToView 返回的是全量揭示视图。
     return drawToView(await drawOne(sql, key, data.pollId, data.note ?? ""));
+  });
+
+/** 发起人切换:结果是否向所有人公示。 */
+export const setDrawResultsPublic = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ pollId: z.string().min(1), isPublic: z.boolean() }))
+  .handler(async ({ data, context }): Promise<void> => {
+    const sql = await getDb();
+    await setResultsPublic(sql, data.pollId, context.userId, data.isPublic);
+  });
+
+/** 公示中的兑奖名单(仅当发起人已公示;否则报错,前端据此隐藏)。 */
+export const fetchPublicClaims = createServerFn({ method: "GET" })
+  .validator(z.object({ drawId: z.string().min(1) }))
+  .handler(async ({ data }): Promise<DrawClaim[]> => {
+    const sql = await getDb();
+    return drawClaimList(sql, data.drawId, null);
   });
 
 /** 「抽签」页的当前频道:最新进行中的抽签,否则最新一场(含已结束)。 */

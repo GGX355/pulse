@@ -499,6 +499,54 @@ export async function listVoterProfiles(sql: Sql): Promise<VoterProfileRow[]> {
   }));
 }
 
+/** 后台「参与明细」的一行:登记名 → 所选项(顿号连接) → 首次投票时间。 */
+export type VoteDetailRow = {
+  name: string;
+  choice: string;
+  atMs: number;
+};
+
+/**
+ * 记名投票的参与明细(谁选了什么)。按登记名聚合;仅统计填写了
+ * 登记信息的票,未开登记的投票本就匿名,返回空列表。
+ */
+export async function voteDetails(
+  sql: Sql,
+  pollId: string,
+  userId: string,
+): Promise<VoteDetailRow[]> {
+  const rows = await sql.query<{ creator_id: string | null }>(
+    `select creator_id from polls where id = $1 limit 1`,
+    [pollId],
+  );
+  if (!rows[0]) throw new Error("内容不存在");
+  // 无主(建号系统前)内容:登录者可视作发起人管理。
+  if (rows[0].creator_id !== null && rows[0].creator_id !== userId) {
+    throw new Error("只有发起人能看参与明细");
+  }
+
+  const votes = await sql.query<{
+    voter_note: string;
+    choice: string;
+    at_ms: number;
+  }>(
+    `select v.voter_note,
+            string_agg(o.label, '、' order by v.created_at asc) as choice,
+            (extract(epoch from min(v.created_at)) * 1000)::bigint as at_ms
+     from poll_votes v
+     join poll_options o on o.id = v.option_id
+     where v.poll_id = $1 and v.voter_note <> ''
+     group by v.voter_note
+     order by min(v.created_at) asc`,
+    [pollId],
+  );
+  return votes.map((row) => ({
+    name: row.voter_note.trim(),
+    choice: row.choice,
+    atMs: Number(row.at_ms),
+  }));
+}
+
 /**
  * Close a poll as its creator. Reads-then-writes so the error messages are
  * exact; only the creator's own id (checked server-side via authMiddleware)
@@ -519,7 +567,10 @@ export async function closePoll(
   );
   const poll = rows[0];
   if (!poll) throw new Error("没有这个投票");
-  if (poll.creator_id !== userId) throw new Error("只有发起人能结束投票");
+  // 无主(建号系统前)内容:登录者可视作发起人管理。
+  if (poll.creator_id !== null && poll.creator_id !== userId) {
+    throw new Error("只有发起人能结束投票");
+  }
   if (poll.closed) throw new Error("投票已经结束了");
 
   await sql.query(

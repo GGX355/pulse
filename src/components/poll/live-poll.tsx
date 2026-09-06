@@ -6,10 +6,12 @@ import {
   effectiveMaxChoices,
   fetchLivePoll,
   fetchPollById,
+  fetchVoteDetails,
   type LivePoll,
 } from "@/lib/poll-api";
 import { useCountUp } from "@/lib/use-count-up";
 import { OptionRow } from "@/components/poll/option-row";
+import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -253,6 +255,10 @@ export function LivePollView({
         </p>
       ) : null}
 
+      {poll.voterNoteLabel ? (
+        <VoteDetailsPanel pollId={poll.id} />
+      ) : null}
+
       {needsConfirm && !hasVoted && !poll.closed ? (
         <Button
           type="button"
@@ -272,5 +278,52 @@ export function LivePollView({
         </Button>
       ) : null}
     </section>
+  );
+}
+
+/**
+ * 发起人专属「参与明细」:记名投票里谁、什么时候、选了什么。
+ * 仅登记制投票显示(匿名投票本就没有名字可对应);服务端校验身份。
+ */
+function VoteDetailsPanel({ pollId }: { pollId: string }) {
+  const { user } = useCurrentUserState();
+  const isCreator = Boolean(user);
+  const query = useQuery({
+    queryKey: ["vote-details", pollId],
+    queryFn: () => fetchVoteDetails({ data: { pollId } }),
+    enabled: isCreator,
+    refetchInterval: 3000,
+  });
+
+  if (!isCreator || !query.data || query.data.length === 0) return null;
+  const rows = query.data;
+
+  return (
+    <details className="mt-2 rounded-xl border border-border bg-surface p-4">
+      <summary className="cursor-pointer text-xs font-medium tracking-wide text-muted">
+        参与明细（{rows.length} 人）
+      </summary>
+      <div className="mt-3 flex flex-col divide-y divide-border">
+        {rows.map((row, index) => (
+          <div
+            key={`${row.name}-${index}`}
+            className="flex items-center justify-between gap-3 py-2 text-sm"
+          >
+            <span className="min-w-0 truncate font-medium text-foreground">
+              {row.name}
+            </span>
+            <span className="flex shrink-0 items-center gap-3 text-xs text-muted">
+              <span className="text-foreground">{row.choice}</span>
+              <span suppressHydrationWarning>
+                {new Date(row.atMs).toLocaleString("zh-CN", {
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </span>
+            </span>
+          </div>
+        ))}
+      </div>
+    </details>
   );
 }

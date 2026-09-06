@@ -4,7 +4,9 @@ import {
   drawLiveOnce,
   fetchDrawAdmin,
   fetchDrawById,
+  fetchPublicClaims,
   listDrawClaims,
+  setDrawResultsPublic,
 } from "@/lib/draw-api";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import type {
@@ -744,10 +746,52 @@ export function DrawView({
         </div>
       ) : null}
 
+      {revealed && ui.resultsPublic ? (
+        <PublicClaims pollId={pollId} />
+      ) : null}
+
       <DrawAdminPanel pollId={pollId} creatorId={draw.creatorId} />
       <RosterPanel pollId={pollId} creatorId={draw.creatorId} />
     </section>
   );
+
+  /**
+   * 公示名单:发起人开启「公开结果」后,所有访客可见谁抽中了什么。
+   * 未公示时服务端拒绝,组件静默不渲染。
+   */
+  function PublicClaims({ pollId }: { pollId: string }) {
+    const query = useQuery({
+      queryKey: ["public-claims", pollId],
+      queryFn: () => fetchPublicClaims({ data: { drawId: pollId } }),
+      retry: false,
+      refetchInterval: 3000,
+    });
+    const claims = query.data;
+    if (!claims || claims.length === 0) return null;
+
+    return (
+      <details className="mt-2 rounded-xl border border-border bg-surface p-4" open>
+        <summary className="cursor-pointer text-xs font-medium tracking-wide text-muted">
+          公示名单（{claims.length} 人）
+        </summary>
+        <div className="mt-3 flex flex-col divide-y divide-border">
+          {claims.map((claim, index) => (
+            <div
+              key={index}
+              className="flex items-center justify-between gap-3 py-2 text-sm"
+            >
+              <span className="min-w-0 truncate font-medium text-foreground">
+                {claim.voterName ?? claim.voterMasked}
+              </span>
+              <span className="shrink-0 tabular-nums text-xs text-muted">
+                {claim.label}
+              </span>
+            </div>
+          ))}
+        </div>
+      </details>
+    );
+  }
 
   /**
    * 发起人专属的实时后台:全量签位数字 + 兑奖名单,1.5s 自动刷新。
@@ -774,6 +818,15 @@ export function DrawView({
       queryFn: () => fetchDrawAdmin({ data: { pollId } }),
       enabled: isCreator,
       refetchInterval: 1500,
+    });
+    const pub = useMutation({
+      mutationFn: (isPublic: boolean) =>
+        setDrawResultsPublic({ data: { pollId, isPublic } }),
+      onSettled: () => {
+        void queryClient.invalidateQueries({ queryKey: ["draw-admin", pollId] });
+        void queryClient.invalidateQueries({ queryKey: contentKey });
+        void queryClient.invalidateQueries({ queryKey: ["public-claims", pollId] });
+      },
     });
 
     if (!isCreator || !stats.data) return null;
@@ -804,6 +857,11 @@ export function DrawView({
           <span className="rounded-full border border-border px-2.5 py-1 tabular-nums text-muted">
             {data.totalTaken} 人已参与
           </span>
+          {data.resultsPublic ? (
+            <span className="rounded-full border border-accent/30 px-2.5 py-1 text-accent">
+              结果已公示
+            </span>
+          ) : null}
           {data.closed ? (
             <span className="rounded-full border border-border px-2.5 py-1 text-subtle">
               已结束
@@ -821,9 +879,17 @@ export function DrawView({
           <button
             type="button"
             onClick={exportClaims}
-            className="ml-auto rounded-full border border-border px-3 py-1 text-muted transition-colors hover:text-foreground"
+            className="rounded-full border border-border px-3 py-1 text-muted transition-colors hover:text-foreground"
           >
             {copied ? "已复制" : "导出名单"}
+          </button>
+          <button
+            type="button"
+            disabled={pub.isPending}
+            className="rounded-full border border-accent/40 px-3 py-1 text-accent transition-colors hover:bg-accent/10 disabled:opacity-50"
+            onClick={() => pub.mutate(!data.resultsPublic)}
+          >
+            {pub.isPending ? "切换中" : data.resultsPublic ? "隐藏结果" : "公开结果"}
           </button>
         </div>
 

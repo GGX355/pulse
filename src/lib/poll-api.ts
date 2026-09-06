@@ -11,8 +11,10 @@ import {
   listVoterProfiles as listRepoVoterProfiles,
   readPoll,
   seedIfEmpty,
+  voteDetails as voteDetailsRepo,
   type LivePoll,
   type PollSummary,
+  type VoteDetailRow,
 } from "./poll-repo";
 
 export type { LivePoll, PollOption, PollSummary, VoterProfileRow } from "./poll-repo";
@@ -134,10 +136,20 @@ export const fetchRosterStatus = createServerFn({ method: "POST" })
       [data.pollId],
     );
     if (!rows[0]) throw new Error("内容不存在");
-    if (rows[0].creator_id !== context.userId) {
+    // 无主(建号系统前)内容:登录者可视作发起人管理。
+    if (rows[0].creator_id !== null && rows[0].creator_id !== context.userId) {
       throw new Error("只有发起人能查看名单核对");
     }
     return rosterStatus(sql, data.pollId);
+  });
+
+/** 发起人专属:记名投票的参与明细(谁选了什么)。 */
+export const fetchVoteDetails = createServerFn({ method: "POST" })
+  .middleware([authMiddleware])
+  .validator(z.object({ pollId: z.string().min(1) }))
+  .handler(async ({ data, context }): Promise<VoteDetailRow[]> => {
+    const sql = await getDb();
+    return voteDetailsRepo(sql, data.pollId, context.userId);
   });
 
 export const closeLivePoll = createServerFn({ method: "POST" })

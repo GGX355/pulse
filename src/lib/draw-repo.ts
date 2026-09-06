@@ -71,6 +71,8 @@ export type DrawPoll = {
   revealModes: RevealMode[];
   /** 标题下的可选备注;空 = 未填写(不渲染)。 */
   description: string;
+  /** 结果已公示:所有人(无论是否已抽)可见抽取情况与公示名单。 */
+  resultsPublic: boolean;
 };
 
 export type Sql = {
@@ -102,6 +104,8 @@ type DrawViewBase = {
   revealModes: RevealMode[];
   /** 标题下的可选备注;空 = 未填写(不渲染)。 */
   description: string;
+  /** 结果已公示:所有人可见抽取情况与公示名单。 */
+  resultsPublic: boolean;
 };
 
 /** 盲选态:抽之前 —— 只有签位名字,没有数字,也没有"我抽到了什么"。 */
@@ -134,8 +138,9 @@ export function drawToView(draw: DrawPoll): DrawView {
     myNote: draw.myNote,
     revealModes: draw.revealModes,
     description: draw.description,
+    resultsPublic: draw.resultsPublic,
   };
-  if (draw.closed || draw.myDraw) {
+  if (draw.closed || draw.myDraw || draw.resultsPublic) {
     return {
       ...base,
       blind: false,
@@ -236,9 +241,10 @@ export async function readDrawById(
     voter_note_label: string;
     reveal_modes: string;
     description: string;
+    results_public: boolean;
   }>(
     `select id, question, creator_id, (closed_at is not null) as closed,
-            voter_note_label, reveal_modes, description
+            voter_note_label, reveal_modes, description, results_public
      from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
@@ -295,6 +301,7 @@ export async function readDrawById(
     myNote: mine[0]?.voter_note.trim() || null,
     revealModes: parseRevealModes(poll.reveal_modes),
     description: poll.description.trim(),
+    resultsPublic: Boolean(poll.results_public),
   };
 }
 
@@ -463,6 +470,28 @@ export async function drawOne(
   }
 }
 
+/** 发起人切换「结果公示」;公示后所有人可见抽取情况与名单。 */
+export async function setResultsPublic(
+  sql: Sql,
+  pollId: string,
+  userId: string,
+  isPublic: boolean,
+): Promise<void> {
+  const polls = await sql.query<{ creator_id: string | null }>(
+    `select creator_id from polls where id = $1 and kind = 'draw' limit 1`,
+    [pollId],
+  );
+  if (!polls[0]) throw new Error("没有这个抽签");
+  // 无主(建号系统前)内容:登录者可视作发起人管理。
+  if (polls[0].creator_id !== null && polls[0].creator_id !== userId) {
+    throw new Error("只有发起人能公示结果");
+  }
+  await sql.query(`update polls set results_public = $2 where id = $1`, [
+    pollId,
+    isPublic,
+  ]);
+}
+
 /** 兑奖名单上的一个人;没留名时 voterName 为 null(前端回退到打码 key)。 */
 export type DrawClaim = {
   label: string;
@@ -479,14 +508,21 @@ function maskKey(key: string): string {
 export async function drawClaimList(
   sql: Sql,
   pollId: string,
-  userId: string,
+  /** null = 以访客身份请求(仅当结果已公示才放行)。 */
+  userId: string | null,
 ): Promise<DrawClaim[]> {
-  const polls = await sql.query<{ creator_id: string | null }>(
-    `select creator_id from polls where id = $1 and kind = 'draw' limit 1`,
+  const polls = await sql.query<{
+    creator_id: string | null;
+    results_public: boolean;
+  }>(
+    `select creator_id, results_public from polls where id = $1 and kind = 'draw' limit 1`,
     [pollId],
   );
   if (!polls[0]) throw new Error("没有这个抽签");
-  if (polls[0].creator_id !== userId) throw new Error("只有发起人能看兑奖名单");
+  // 结果已公示 → 任何人可看;否则仅发起人。
+  if (!polls[0].results_public && polls[0].creator_id !== userId) {
+    throw new Error("只有发起人能看兑奖名单");
+  }
 
   const rows = await sql.query<{
     label: string;
@@ -614,6 +650,8 @@ export type DrawAdminStats = {
   closed: boolean;
   allTaken: boolean;
   totalTaken: number;
+  /** 结果已公示:所有访客可见抽取情况与公示名单。 */
+  resultsPublic: boolean;
   slots: DrawSlot[];
   claims: DrawClaim[];
 };
@@ -630,7 +668,10 @@ export async function drawAdminStats(
   );
   const poll = polls[0];
   if (!poll) throw new Error("没有这个抽签");
-  if (poll.creator_id !== userId) throw new Error("只有发起人能看后台数据");
+  // 无主(建号系统前)内容:登录者可视作发起人管理。
+  if (poll.creator_id !== null && poll.creator_id !== userId) {
+    throw new Error("只有发起人能看后台数据");
+  }
 
   // myDraw 与后台无关,传一个不可能命中的 key。
   const draw = await readDrawById(sql, `admin:${pollId}`, pollId);
@@ -642,6 +683,7 @@ export async function drawAdminStats(
     closed: draw.closed,
     allTaken: draw.allTaken,
     totalTaken: draw.totalTaken,
+    resultsPublic: draw.resultsPublic,
     slots: draw.slots,
     claims,
   };
