@@ -447,7 +447,10 @@ export function DrawView({
     const winCell =
       matches.length > 0 ? matches[Math.floor(Math.random() * matches.length)] : 0;
     const winPos = order.indexOf(winCell);
-    const landing = 14 + ((winPos + 8) % 8);
+    // 从第 0 步起步,步 k 停在 order[k % 8]:取 ≥14 的最小圈数,
+    // 使最后一步恰好停在结果格(否则会停在随机格,与结果不符)。
+    let landing = winPos;
+    while (landing < 14) landing += 8;
     const steps: Array<{ cell: number; delay: number }> = [];
     for (let i = 0; i <= landing; i++) {
       const t = i / landing;
