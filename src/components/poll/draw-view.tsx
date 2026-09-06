@@ -105,11 +105,19 @@ export function DrawView({
     setPerforming(true);
   }
 
+  const wallRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
-    if (wallRevealed && performingRef.current) {
-      performingRef.current = false;
-      setPerforming(false);
-    }
+    if (!wallRevealed || !performingRef.current) return;
+    performingRef.current = false;
+    setPerforming(false);
+    // 舞台收起会把视口「弹回」切换条处;改为把结果墙平滑带入视野,
+    // 让人落在自己的结果上(直接刷新进已揭晓页不触发)。
+    requestAnimationFrame(() => {
+      wallRef.current?.scrollIntoView({
+        behavior: prefersReduced ? "auto" : "smooth",
+        block: "start",
+      });
+    });
   }, [wallRevealed]);
 
   useEffect(() => {
@@ -121,9 +129,11 @@ export function DrawView({
 
   useEffect(() => {
     const timers = gridTimers.current;
+    const nTimer = nudgeTimer;
     return () => {
       if (rollTimer.current) window.clearInterval(rollTimer.current);
       timers.forEach((id) => window.clearTimeout(id));
+      if (nTimer.current) window.clearTimeout(nTimer.current);
     };
   }, []);
 
@@ -152,8 +162,19 @@ export function DrawView({
   // 揭晓视图的签位(带 taken/count);盲选视图只有 {id,label}。
   const slots: Array<{ id: string; label: string }> = ui.slots;
 
+  const noteInputRef = useRef<HTMLInputElement | null>(null);
+  const [noteNudge, setNoteNudge] = useState(false);
+  const nudgeTimer = useRef<number | null>(null);
   const noteRequired = Boolean(initialData.blind && initialData.voterNoteLabel);
   const noteMissing = noteRequired && !note.trim();
+
+  // 没填名字就点卡/点开始:不静默忽略,抖动 + 聚焦输入框引导填写。
+  function nudgeNote() {
+    setNoteNudge(true);
+    noteInputRef.current?.focus();
+    if (nudgeTimer.current) window.clearTimeout(nudgeTimer.current);
+    nudgeTimer.current = window.setTimeout(() => setNoteNudge(false), 1600);
+  }
 
   const drawMut = useMutation({
     mutationFn: () =>
@@ -226,7 +247,10 @@ export function DrawView({
      翻的是「结果卡」:翻转与结果墙、后台记录用同一个 slotId,永不穿帮。
      翻面动画由 .is-flipping 的 0.7s transition 驱动,不用 WAAPI 叠加。 */
   function flipPick() {
-    if (!canDraw()) return;
+    if (!canDraw()) {
+      if (noteMissing) nudgeNote();
+      return;
+    }
     startPerforming();
     if (!prefersReduced) startRoll(slots.map((slot) => slot.label));
     void drawOnce().then((result) => {
@@ -249,7 +273,10 @@ export function DrawView({
 
   /* ── 模式二:刮奖(点牌 → 服务端结果上涂层 → 刮开揭晓) ── */
   function scratchPick() {
-    if (!canDraw()) return;
+    if (!canDraw()) {
+      if (noteMissing) nudgeNote();
+      return;
+    }
     startPerforming();
     drawMut.mutate(undefined, {
       onSuccess: (result) => {
@@ -393,7 +420,10 @@ export function DrawView({
     return Array.from({ length: 8 }, (_, i) => real[i % real.length]);
   }
   function gridStart() {
-    if (!canDraw()) return;
+    if (!canDraw()) {
+      if (noteMissing) nudgeNote();
+      return;
+    }
     startPerforming();
     drawMut.mutate(undefined, {
       onSuccess: (result) => {
@@ -484,14 +514,24 @@ export function DrawView({
           {noteRequired ? (
             <div className="flex flex-col gap-1.5">
               <Input
+                ref={noteInputRef}
                 value={note}
                 maxLength={40}
                 placeholder={`请填写${initialData.voterNoteLabel}`}
                 aria-label={initialData.voterNoteLabel}
+                className={cn(noteNudge && "input-nudge")}
                 onChange={(e) => setNote(e.target.value)}
               />
-              <p className="text-center text-xs text-subtle">
-                抽签前需填写{initialData.voterNoteLabel} · 揭晓动画任选其一
+              <p
+                className={cn(
+                  "text-center text-xs",
+                  noteNudge ? "hint-nudge" : "text-subtle",
+                )}
+                aria-live="polite"
+              >
+                {noteNudge
+                  ? `请先填写${initialData.voterNoteLabel}再抽`
+                  : `抽签前需填写${initialData.voterNoteLabel} · 揭晓动画任选其一`}
               </p>
             </div>
           ) : null}
@@ -659,7 +699,7 @@ export function DrawView({
       ) : null}
 
       {(wallRevealed || (revealed && !performing)) && wallSlots.length > 0 ? (
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2" ref={wallRef}>
           <p className="text-xs font-medium tracking-wide text-muted">抽取结果</p>
           {wallSlots.map((slot) => {
             const fill =

@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   castVote,
   effectiveMaxChoices,
@@ -10,6 +10,7 @@ import {
 } from "@/lib/poll-api";
 import { useCountUp } from "@/lib/use-count-up";
 import { OptionRow } from "@/components/poll/option-row";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -90,6 +91,22 @@ export function LivePollView({
 }) {
   const { poll, isError, vote } = useLivePoll(pollId, initialData);
   const [note, setNote] = useState("");
+  const noteInputRef = useRef<HTMLInputElement | null>(null);
+  const [noteNudge, setNoteNudge] = useState(false);
+  const nudgeTimer = useRef<number | null>(null);
+  // 没填登记信息就点选项:不静默忽略,抖动 + 聚焦输入框引导填写。
+  function nudgeNote() {
+    setNoteNudge(true);
+    noteInputRef.current?.focus();
+    if (nudgeTimer.current) window.clearTimeout(nudgeTimer.current);
+    nudgeTimer.current = window.setTimeout(() => setNoteNudge(false), 1600);
+  }
+  useEffect(() => {
+    const t = nudgeTimer.current;
+    return () => {
+      if (t) window.clearTimeout(t);
+    };
+  }, []);
   const [picked, setPicked] = useState<string[]>([]);
   const [writeInText, setWriteInText] = useState("");
   const total = useCountUp(poll?.total ?? 0);
@@ -178,15 +195,19 @@ export function LivePollView({
         <div className="flex flex-col gap-2">
           <Label htmlFor={`pulse-note-${poll.id}`}>{poll.voterNoteLabel}</Label>
           <Input
+            ref={noteInputRef}
             id={`pulse-note-${poll.id}`}
             value={hasVoted ? (poll.myNote ?? "") : note}
             maxLength={40}
             readOnly={hasVoted || poll.closed}
             placeholder={`你的${poll.voterNoteLabel}`}
+            className={cn(noteNudge && "input-nudge")}
             onChange={(e) => setNote(e.target.value)}
           />
           {needsNote && !filledNote ? (
-            <p className="text-xs text-muted">请先填写</p>
+            <p className={cn("text-xs", noteNudge ? "hint-nudge" : "text-muted")}>
+              请先填写{poll.voterNoteLabel}再投票
+            </p>
           ) : null}
         </div>
       ) : null}
@@ -206,6 +227,7 @@ export function LivePollView({
               votedIds={poll.votedIds}
               selected={selected}
               multiple={multiple}
+              onDisabledActivate={nudgeNote}
               disabled={
                 vote.isPending ||
                 poll.closed ||

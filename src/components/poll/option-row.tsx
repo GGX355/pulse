@@ -15,6 +15,7 @@ export function OptionRow({
   writeInValue,
   onToggle,
   onWriteInChange,
+  onDisabledActivate,
 }: {
   option: PollOption;
   pollId: string;
@@ -26,6 +27,8 @@ export function OptionRow({
   writeInValue: string;
   onToggle: (optionId: string) => void;
   onWriteInChange: (value: string) => void;
+  /** 禁用期间被点击(典型:还没填登记信息)——给上层机会做引导提示。 */
+  onDisabledActivate?: () => void;
 }) {
   const isMine = votedIds.includes(option.id) || selected;
   const locked = votedIds.length > 0;
@@ -63,6 +66,9 @@ export function OptionRow({
     <div
       ref={rowRef}
       data-option-id={option.id}
+      onClick={() => {
+        if (disabled) onDisabledActivate?.();
+      }}
       onPointerMove={onPointerMove}
       onPointerLeave={onPointerLeave}
       className={cn(

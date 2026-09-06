@@ -1021,3 +1021,13 @@ main h1 {
     animation: none !important;
   }
 }
+
+/* 未填登记信息就点击的引导:输入框抖动 + 提示语点亮 */
+.input-nudge {
+  border-color: var(--color-accent) !important;
+  animation: shake-x 0.38s ease 2;
+}
+.hint-nudge {
+  color: var(--color-accent);
+  animation: shake-x 0.38s ease;
+}
