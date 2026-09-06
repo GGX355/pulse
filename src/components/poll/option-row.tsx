@@ -40,9 +40,31 @@ export function OptionRow({
     prevVotes.current = option.votes;
   }, [option.votes]);
 
+  const rowRef = useRef<HTMLDivElement | null>(null);
+
+  // 灵动悬停：行内眩光跟随指针 + 磁吸偏移（样式见 .poll-option --mx/--my/--magx）。
+  const onPointerMove = (e: React.PointerEvent<HTMLDivElement>) => {
+    const el = rowRef.current;
+    if (!el || locked) return;
+    const r = el.getBoundingClientRect();
+    el.style.setProperty("--mx", `${(e.clientX - r.left).toFixed(0)}px`);
+    el.style.setProperty("--my", `${(e.clientY - r.top).toFixed(0)}px`);
+    const dx = e.clientX - (r.left + r.width / 2);
+    el.style.setProperty(
+      "--magx",
+      `${Math.max(-5, Math.min(5, dx * 0.03)).toFixed(1)}px`,
+    );
+  };
+  const onPointerLeave = () => {
+    rowRef.current?.style.setProperty("--magx", "0px");
+  };
+
   return (
     <div
+      ref={rowRef}
       data-option-id={option.id}
+      onPointerMove={onPointerMove}
+      onPointerLeave={onPointerLeave}
       className={cn(
         "poll-option touch-manipulation",
         isMine && "is-mine",

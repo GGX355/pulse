@@ -343,12 +343,33 @@ main h1 {
   -webkit-backdrop-filter: var(--glass-bf);
   box-shadow: var(--rim-sm);
   padding: 14px 16px;
+  transform: translateX(var(--magx, 0));
   transition:
     background-size 400ms var(--ease-out-expo),
     border-color 150ms ease,
     opacity 150ms ease,
-    transform 150ms var(--ease-out-expo),
+    transform 0.6s cubic-bezier(0.28, 1.7, 0.4, 1),
     box-shadow 250ms ease;
+}
+
+/* 指针眩光：跟随鼠标的高光斑（option-row 写入 --mx/--my） */
+.poll-option::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    140px circle at var(--mx, 50%) var(--my, 50%),
+    var(--glare),
+    transparent 70%
+  );
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+.poll-option:hover::before {
+  opacity: 1;
 }
 
 .poll-option:hover {
@@ -356,7 +377,7 @@ main h1 {
 }
 
 .poll-option:active:not(.is-locked) {
-  transform: scale(0.965);
+  transform: translateX(var(--magx, 0)) scale(0.965);
   transition-duration: 0.08s;
 }
 
