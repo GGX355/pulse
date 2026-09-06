@@ -230,11 +230,46 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
   );
 }
 
-/* 所有用 bg-surface/2 的面板自动获得玻璃雾面 */
+/* 所有用 bg-surface/2 的面板 = 完整液态玻璃（膜+棱边+眩光），全局覆盖 */
 .bg-surface,
 .bg-surface-2 {
+  position: relative;
+  background: var(--glass-bg);
   backdrop-filter: var(--glass-bf);
   -webkit-backdrop-filter: var(--glass-bf);
+  border-color: var(--glass-border);
+  box-shadow: var(--rim-sm);
+}
+.bg-surface::after,
+.bg-surface-2::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background: radial-gradient(
+    320px circle at var(--gx, 28%) var(--gy, 18%),
+    var(--glare),
+    transparent 65%
+  );
+}
+
+/* 输入框圆角走 HIG 小件档 */
+input.bg-surface {
+  border-radius: var(--r-sm);
+}
+
+/* 页面主标题 = HIG Large Title 34 */
+main h1 {
+  font-size: var(--fs-large-title) !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.4px !important;
+}
+
+/* 盲选卡揭晓演出：未中卡模糊淡化（Smooth 档） */
+.draw-blind-card.dim-others {
+  opacity: 0.5;
+  filter: blur(2.5px);
 }
 
 /* ── 顶部悬浮玻璃药丸导航 ── */
@@ -524,7 +559,7 @@ html[data-theme="dark"] .orbs { animation-name: hueflowDark; }
   min-height: 68px;
   border-radius: var(--r-md);
   transform-style: preserve-3d;
-  transition: transform 0.8s cubic-bezier(0.2, 0.9, 0.25, 1.05);
+  transition: transform 0.7s cubic-bezier(0.25, 0.7, 0.18, 1);
   animation: pop-in 420ms var(--ease-spring) both;
 }
 

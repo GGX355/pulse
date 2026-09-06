@@ -37,27 +37,78 @@ export function spring(
   });
 }
 
-/** 果冻挤压：面板/卡片切换内容时的「灵动」手感（双轴反向 = 保体积）。 */
+/** 果冻挤压：Smooth 档（无过冲，单次轻压回正）。
+ *  弹簧参数对应苹果 duration .55s / bounce 0。 */
 export function jelly(el: Element | null): Animation | undefined {
   if (!el) return undefined;
-  return spring(el, 0.045, -0.045, { freq: 3.1, decay: 5, dur: 950 });
+  return spring(el, 0.03, -0.03, { freq: 2.4, decay: 12, dur: 820 });
 }
 
-/** 内容入场：模糊淡入 + 轻微过冲。 */
+/** 内容入场：Soft 淡入上移（无过冲）。 */
 export function stageIn(el: Element | null): Animation | undefined {
   if (!el) return undefined;
   return el.animate(
     [
-      { opacity: 0, transform: "scale(.94,.9)", filter: "blur(9px)" },
-      {
-        opacity: 1,
-        transform: "scale(1.025,.975)",
-        filter: "blur(0px)",
-        offset: 0.42,
-      },
-      { transform: "scale(.992,1.006)", offset: 0.74 },
-      { opacity: 1, transform: "scale(1,1)" },
+      { opacity: 0, transform: "translateY(14px)" },
+      { opacity: 1, transform: "translateY(0)" },
     ],
-    { duration: 640, easing: "cubic-bezier(.24,.9,.32,1)" },
+    { duration: 480, easing: "cubic-bezier(.25,.7,.18,1)" },
   );
+}
+
+/** 揭晓礼花：小规模（Smooth 档 70 粒），主题色取自 CSS 变量。 */
+export function confetti(count = 70): void {
+  const style = getComputedStyle(document.documentElement);
+  const colors = [
+    style.getPropertyValue("--color-accent").trim() || "#0066ff",
+    "#7d5aff",
+    "#ff5f8f",
+    "#ffb340",
+    "#40c8b0",
+  ];
+  const cv =
+    (document.getElementById("fx") as HTMLCanvasElement | null) ??
+    document.createElement("canvas");
+  if (!cv.isConnected) {
+    cv.id = "fx";
+    cv.style.cssText =
+      "position:fixed;inset:0;pointer-events:none;z-index:99";
+    document.body.appendChild(cv);
+  }
+  const ctx = cv.getContext("2d");
+  if (!ctx) return;
+  cv.width = innerWidth;
+  cv.height = innerHeight;
+  const parts: Array<{
+    x: number; y: number; vx: number; vy: number;
+    r: number; c: string; life: number; decay: number; rot: number;
+  }> = [];
+  for (let i = 0; i < count; i++) {
+    const a = Math.random() * Math.PI * 2;
+    const v = 4 + Math.random() * 8;
+    parts.push({
+      x: cv.width / 2, y: cv.height * 0.4,
+      vx: Math.cos(a) * v, vy: Math.sin(a) * v - 3,
+      r: 3 + Math.random() * 4, c: colors[i % colors.length],
+      life: 1, decay: 0.011 + Math.random() * 0.01, rot: Math.random() * Math.PI,
+    });
+  }
+  const t0 = performance.now();
+  (function frame(t: number) {
+    ctx.clearRect(0, 0, cv.width, cv.height);
+    let alive = false;
+    for (const p of parts) {
+      if (p.life <= 0) continue;
+      alive = true;
+      p.x += p.vx; p.y += p.vy; p.vy += 0.17; p.life -= p.decay; p.rot += 0.08;
+      ctx.save();
+      ctx.globalAlpha = Math.max(p.life, 0);
+      ctx.translate(p.x, p.y); ctx.rotate(p.rot);
+      ctx.fillStyle = p.c;
+      ctx.fillRect(-p.r / 2, -p.r / 2, p.r, p.r * 1.7);
+      ctx.restore();
+    }
+    if (alive && t - t0 < 3500) requestAnimationFrame(frame);
+    else ctx.clearRect(0, 0, cv.width, cv.height);
+  })(t0);
 }

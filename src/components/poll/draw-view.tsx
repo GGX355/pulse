@@ -15,7 +15,7 @@ import type {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { RosterPanel } from "@/components/poll/roster-panel";
-import { jelly } from "@/lib/motion";
+import { jelly, confetti } from "@/lib/motion";
 
 /**
  * The draw experience, blind by default: before you draw there are no numbers
@@ -75,6 +75,7 @@ export function DrawView({
       if (result.blind === false && result.myDraw) {
         setMySlotId(result.myDraw.slotId);
         setFlipping(true);
+        confetti(70);
         window.setTimeout(() => {
           setFlipping(false);
           setWallRevealed(true);
@@ -104,7 +105,7 @@ export function DrawView({
     rollTimer.current = window.setInterval(() => {
       index = (index + 1) % labels.length;
       setRollLabel(labels[index]);
-    }, 90);
+    }, 105); // Smooth 档滚动节奏
     drawMut.mutate();
   }
 
@@ -146,7 +147,7 @@ export function DrawView({
             {rollLabel}
           </span>
         ) : revealed && myLabel ? (
-          <div className="animate-in fade-in zoom-in-95 duration-300">
+          <div className="animate-in fade-in duration-500">
             <p className="text-sm text-muted">你抽到了</p>
             <p className="mt-1 font-display text-4xl font-semibold tracking-tight text-foreground">
               {myLabel}
@@ -204,7 +205,9 @@ export function DrawView({
               <div
                 key={slot.id}
                 className={
-                  "draw-blind-card" + (mine && flipping ? " is-flipping" : "")
+                  "draw-blind-card" +
+                  (mine && flipping ? " is-flipping" : "") +
+                  (!mine && flipping ? " dim-others" : "")
                 }
                 style={{ animationDelay: `${Math.min(index, 8) * 60}ms` }}
               >
