@@ -314,7 +314,7 @@ function VoteDetailsPanel({ pollId }: { pollId: string }) {
         `${index + 1}\t${new Date(row.atMs).toLocaleString("zh-CN")}\t${row.name}\t${row.choice}`,
     );
     void navigator.clipboard
-      .writeText(["时间\t姓名\t选择", ...lines].join("\n"))
+      .writeText(["序号\t时间\t姓名\t选择", ...lines].join("\n"))
       .then(() => {
         setCopied(true);
         window.setTimeout(() => setCopied(false), 1600);

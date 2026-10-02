@@ -44,6 +44,29 @@ async function makeSql(): Promise<Sql> {
 }
 
 describe("poll-repo(内存 PGlite 集成)", () => {
+  it("截止时间保留原始时刻与毫秒,按 id 和最新投票读取一致", async () => {
+    const sql = await makeSql();
+    const deadline = new Date("2099-09-07T15:42:13.479Z");
+    const id = await createPoll(sql, "截止时间", ["甲", "乙"], null, "", 1, "", [], "", deadline);
+    for (const poll of [await readPoll(sql, "guest", id), await readPoll(sql, "guest")]) {
+      assert.ok(poll);
+      assert.equal(poll.closesAt, deadline.getTime());
+      assert.equal(poll.deadlinePassed, false);
+    }
+  });
+
+  it("过期投票拒绝新投票,无截止时间保持 null", async () => {
+    const sql = await makeSql();
+    const id = await createPoll(sql, "过期", ["甲", "乙"], null, "", 1, "", [], "", new Date("2020-01-01T00:00:00.123Z"));
+    const poll = await readPoll(sql, "guest", id);
+    assert.ok(poll);
+    assert.equal(poll.closesAt, Date.parse("2020-01-01T00:00:00.123Z"));
+    assert.equal(poll.deadlinePassed, true);
+    await assert.rejects(castVote(sql, "guest", poll.options[0].id, "", id), /截止|结束/);
+    const openId = await createPoll(sql, "不限时", ["甲", "乙"]);
+    assert.equal((await readPoll(sql, "guest", openId))?.closesAt, null);
+  });
+
   it("空库时 readPoll 返回 null", async () => {
     const sql = await makeSql();
     assert.equal(await readPoll(sql, "k1"), null);

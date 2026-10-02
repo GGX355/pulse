@@ -1,0 +1,5 @@
+# Preserve the original vendored material byte for byte on Windows checkouts.
+vendor/liquid-glass-original/* -text
+vendor/liquid-glass-v17/* -text
+vendor/pulse-final/* -text
+public/glass-lab/* -text

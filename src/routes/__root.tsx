@@ -1,15 +1,9 @@
-import {
-  createRootRoute,
-  HeadContent,
-  Outlet,
-  Scripts,
-} from "@tanstack/react-router";
+import { createRootRoute, HeadContent, Outlet, Scripts } from "@tanstack/react-router";
 import { AuthProvider } from "@/lib/auth/provider";
 import { PreviewHostBridge } from "@/components/preview-host-bridge";
 import { QueryProvider } from "@/components/query-provider";
 import { SiteShell } from "@/components/site-shell";
-import { BeautifySwitch } from "@/components/beautify-switch";
-import appCss from "../styles.css?url";
+import appCss from "../components/final-glass/styles.css?url";
 
 const APP_NAME = "Pulse";
 
@@ -25,12 +19,12 @@ export const Route = createRootRoute({
       {
         name: "theme-color",
         media: "(prefers-color-scheme: light)",
-        content: "#f2f6ff",
+        content: "#f4f6ef",
       },
       {
         name: "theme-color",
         media: "(prefers-color-scheme: dark)",
-        content: "#04050a",
+        content: "#111d1b",
       },
     ],
     links: [
@@ -47,9 +41,6 @@ export const Route = createRootRoute({
       {
         children: `if ("serviceWorker" in navigator && location.protocol === "https:") { navigator.serviceWorker.register("/sw.js").catch(() => {}); }`,
       },
-      {
-        children: `try{var b=JSON.parse(localStorage.getItem("pulse-beautify")||'{"on":true,"preset":"v1"}');var e=document.documentElement;if(b.on){var m={v1:"b1 b2 b3 b4 b5",v2:"b1 b3 b5",v3:"b1 b4 b5",v5:"b1 b5",v6:"b1 b2 b3 b4 b5"};e.setAttribute("data-beautify",b.preset||"v1");e.setAttribute("data-beaut-items",m[b.preset]||m.v1);if(b.preset==="v6")e.setAttribute("data-beaut-silk","1")}}catch(x){}`,
-      },
     ],
   }),
   component: () => (
@@ -57,7 +48,7 @@ export const Route = createRootRoute({
       <head>
         <HeadContent />
       </head>
-      <body>
+      <body className="pulse-site" data-material="liquid">
         <PreviewHostBridge />
         <AuthProvider>
           <QueryProvider>
@@ -65,7 +56,6 @@ export const Route = createRootRoute({
               <Outlet />
             </SiteShell>
           </QueryProvider>
-          <BeautifySwitch />
         </AuthProvider>
         <Scripts />
       </body>

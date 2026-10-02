@@ -292,17 +292,14 @@ export function DrawView({
       return;
     }
     startPerforming();
-    drawMut.mutate(undefined, {
-      onSuccess: (result) => {
-        if (result.blind === false && result.myDraw) {
-          setScratchLabel(result.myDraw.label);
-          setScratchReady(true);
-        }
-      },
-      onError: () => {
+    void drawOnce().then((result) => {
+      if (!result?.myDraw) {
         performingRef.current = false;
         setPerforming(false);
-      },
+        return;
+      }
+      setScratchLabel(result.myDraw.label);
+      setScratchReady(true);
     });
   }
 
@@ -420,6 +417,7 @@ export function DrawView({
         jelly(panelRef.current);
       }
       setWallRevealed(true);
+      setDrewTick((t) => t + 1);
     }
   }
 
@@ -517,7 +515,7 @@ export function DrawView({
     (ui.blind || ui.resultsPublic) &&
     !closed &&
     !(ui.blind && wallRevealed) &&
-    !(ui.resultsPublic && !ui.blind && initialData.myDraw);
+    !(ui.resultsPublic && !ui.blind && (ui.myDraw || (!performing && mySlotId)));
   // 结果墙数据:轮询已揭晓用真数据;演出刚收尾、轮询还没回来时用服务端
   // 结果快照(revealSlots),永不拿盲选数据渲染数字。
   const wallSlots: DrawRevealedView["slots"] = revealed
@@ -858,7 +856,7 @@ export function DrawView({
           `${index + 1}\t${new Date(claim.drewAtMs).toLocaleString("zh-CN")}\t${claim.voterName ?? claim.voterMasked}\t${claim.label}`,
       );
       void navigator.clipboard
-        .writeText(["时间\t抽签人\t结果", ...lines].join("\n"))
+        .writeText(["序号\t时间\t抽签人\t结果", ...lines].join("\n"))
         .then(() => {
           setCopied(true);
           window.setTimeout(() => setCopied(false), 1600);

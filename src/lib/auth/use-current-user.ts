@@ -1,4 +1,9 @@
+import { useSyncExternalStore } from "react";
 import { authClient, authEnabled } from "./client";
+
+const subscribeHydration = () => () => {};
+const clientHydrated = () => true;
+const serverHydrated = () => false;
 
 /** Normalized user shape used across the app, auth on or off. */
 export type AppUser = {
@@ -55,8 +60,16 @@ export type CurrentUserState = {
  * call keeps a stable hook order across every render of a given component.
  */
 export function useCurrentUserState(): CurrentUserState {
+  // Session cache may already be populated during hydration. Match the SSR
+  // loading view first, then expose the client session after hydration.
+  const hydrated = useSyncExternalStore(
+    subscribeHydration,
+    clientHydrated,
+    serverHydrated,
+  );
   if (!authEnabled) return { user: DEV_USER, isPending: false };
   const { data, isPending } = authClient.useSession();
+  if (!hydrated) return { user: null, isPending: true };
   const user = data?.user;
   return {
     user: user

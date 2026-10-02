@@ -109,7 +109,7 @@ export async function readPoll(
         voter_note_label: string;
         max_choices: number;
         description: string;
-        closes_at: string | null;
+        closes_at: Date | string | null;
         deadline_passed: boolean;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
@@ -126,7 +126,7 @@ export async function readPoll(
         voter_note_label: string;
         max_choices: number;
         description: string;
-        closes_at: string | null;
+        closes_at: Date | string | null;
         deadline_passed: boolean;
       }>(
         `select id, question, creator_id, (closed_at is not null) as closed,
@@ -216,7 +216,7 @@ export async function readPoll(
     voterNoteLabel: poll.voter_note_label,
     myNote,
     closesAt: poll.closes_at
-      ? new Date(poll.closes_at + "Z").getTime()
+      ? new Date(poll.closes_at).getTime()
       : null,
     deadlinePassed: Boolean(poll.deadline_passed),
     myWriteIn,
