@@ -1,20 +1,71 @@
-import { useEffect, useRef, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import source from '../../../vendor/pulse-final/pulse.html?raw';
 import { mountPulse } from '../../../vendor/pulse-final/pulse-runtime.js';
-import { createPulseApi } from './api';
 
 // HTML, styles and motion are exact GitHub pulse-final source. Only asset URLs
 // are adapted here. Route loaders/APIs remain in the original application.
 const body = source.split(/<body[^>]*>/)[1].split('</body>')[0]
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
   .replaceAll('href="lab.html"', 'href="/glass-lab/lab.html"')
-  .replaceAll('href="pulse.html"', 'href="/"');
+  .replaceAll('href="pulse.html"', import.meta.env.VITE_UI_PREVIEW ? 'href="/#/"' : 'href="/"');
 
-export function FinalGlassShell({ children: _children }: { children: ReactNode }) {
+export function FinalGlassShell({ children }: { children: ReactNode }) {
   const host = useRef<HTMLDivElement>(null);
+  // The optical engine owns this DOM. Never reset innerHTML on route/state renders.
+  const frame = useMemo(() => <div ref={host} dangerouslySetInnerHTML={{ __html: body }} />, []);
+  const mounted = useRef<ReturnType<typeof mountPulse> | null>(null);
+  const [outlet, setOutlet] = useState<HTMLElement | null>(null);
+  const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
+  const navigate = useNavigate();
+  const path = useRouterState({ select: state => state.location.pathname });
+  const activityMode = useRouterState({ select: state => {
+    const data = state.matches.at(-1)?.loaderData as { kind?: string } | undefined;
+    const search = state.location.search as { kind?: string };
+    return state.location.pathname.startsWith('/draw') || search.kind === 'draw' || data?.kind === 'draw' ? 'draw' : 'poll';
+  } });
+  const navigateRef = useRef(navigate); navigateRef.current = navigate;
   useEffect(() => {
-    const mounted = mountPulse({ business: createPulseApi() });
-    return () => mounted.destroy();
+    document.body.classList.add('pulse-site', 'pulse-application'); document.body.dataset.material = 'liquid';
+    const element = document.createElement('div'); element.className = 'pulse-business-host'; element.id = 'pulse-original-routes';
+    const nav = document.createElement('nav'); nav.className = 'pulse-route-nav'; nav.setAttribute('aria-label', '完整活动功能');
+    host.current!.querySelector('#poll-panel')!.append(element);
+    host.current!.querySelector('#pulse-stage')!.after(nav);
+    setOutlet(element); setToolbar(nav);
+    const app = mountPulse({ embedded: true }); mounted.current = app;
+    const preview = import.meta.env.VITE_UI_PREVIEW;
+    host.current!.querySelector('.preview-tag')!.textContent = preview ? '完整功能预览 · 示例数据' : '一起投票 · 遇见好运';
+    host.current!.querySelector('.footer-links > span')!.textContent = preview ? '沿用 PULSE dev 全部功能页面。示例数据仅在本页，刷新后重置。' : '让每一份心意，都被认真记录。';
+    const controller = new AbortController();
+    const routeClick = (event: Event) => {
+      const anchor = (event.target as Element).closest<HTMLAnchorElement>('a[href^="#"]');
+      if (anchor) { event.preventDefault(); host.current?.querySelector(anchor.getAttribute('href')!)?.scrollIntoView({ behavior: 'smooth' }); return; }
+      const target = (event.target as Element).closest<HTMLElement>('[data-go],[data-nav-mode],#poll-tab,#draw-tab');
+      if (!target || !host.current?.contains(target)) return;
+      const mode = target.dataset.go || target.dataset.navMode || (target.id === 'draw-tab' ? 'draw' : 'poll');
+      if (mode === 'explore') return;
+      void navigateRef.current({ to: mode === 'draw' ? '/draw' : '/vote' });
+    };
+    host.current!.addEventListener('click', routeClick, { signal: controller.signal });
+    const observer = new MutationObserver(() => app.refreshGlass());
+    observer.observe(element, { childList: true, subtree: true });
+    observer.observe(nav, { childList: true, subtree: true });
+    return () => { observer.disconnect(); controller.abort(); app.destroy(); element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
   }, []);
-  return <div ref={host} dangerouslySetInnerHTML={{ __html: body }} />;
+  useEffect(() => {
+    if (!outlet || !mounted.current) return;
+    mounted.current.setMode(activityMode);
+    outlet.scrollTop = 0;
+    mounted.current.refreshGlass();
+  }, [outlet, path, activityMode]);
+  return <>
+    {frame}
+    {outlet && createPortal(children, outlet)}
+    {toolbar && createPortal(<>
+      <Link to="/">当前活动</Link><Link to="/polls">投票历史</Link><Link to="/draw/history">抽签历史</Link>
+      <Link to="/new">发起与管理</Link><Link to="/login">账号</Link><Link to="/compare">材质对照</Link>
+      {import.meta.env.VITE_UI_PREVIEW && <span className="app-preview-label">示例数据 · 刷新后重置</span>}
+    </>, toolbar)}
+  </>;
 }

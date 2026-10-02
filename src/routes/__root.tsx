@@ -48,7 +48,7 @@ export const Route = createRootRoute({
       <head>
         <HeadContent />
       </head>
-      <body className="pulse-site" data-material="liquid">
+      <body className="pulse-site pulse-application" data-material="liquid">
         <PreviewHostBridge />
         <AuthProvider>
           <QueryProvider>

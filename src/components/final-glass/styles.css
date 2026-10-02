@@ -6,3 +6,8 @@
 @import '../../../vendor/pulse-final/pulse-glass.css';
 @import '../../../vendor/pulse-final/pulse-transitions.css';
 @import '../../../vendor/pulse-final/pulse-depth.css';
+@import 'tailwindcss';
+@source '../../';
+@import 'tw-animate-css';
+@import '../../../vendor/pulse-final/pulse-feature-layout.css';
+@import '../../../vendor/pulse-final/pulse-app.css';

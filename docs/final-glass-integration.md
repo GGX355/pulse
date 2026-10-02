@@ -1,15 +1,26 @@
-# GitHub final frontend integration
+# PULSE dev functionality restored — 2026-10-03
 
-Authoritative visual source: https://github.com/GGX355/liquid-glass-template/tree/main/pulse-final
+Functional baseline: GGX355/pulse dev, 3bc3a3f7e294a14a0731354d7131112679e824e0.
+Visual source: https://github.com/GGX355/liquid-glass-template/tree/main/pulse-final
 
-`scripts/sync-final-glass.mjs` copies source files verbatim and records SHA-256 provenance in `vendor/pulse-final/SOURCE.json`. The shell renders that HTML and imports those styles and animation modules; it does not mount the previous React UI. The only app-specific presentation adjustment is asset URLs.
+## Correction
+The previous FinalGlassShell discarded its children and substituted a smaller vanilla controller. The original routes and backend code were still present, but unreachable. The shell now mounts the real router outlet into the approved glass activity panel and exposes current content, histories, creation/management, accounts and comparison routes.
 
-`src/components/final-glass/api.ts` connects existing server functions to that frontend: voting (single/multiple/write-in/roster/deadline), drawing (server-selected outcomes and blind-safe views), history, creation, email sign-in/sign-up, management, closing, result visibility, TSV export, sharing. AuthProvider, QueryProvider, PreviewHostBridge and the platform PWA hooks remain mounted. Backend authorization and SQL are not replaced by demo code. Live refresh stays on the current activity and preserves unsubmitted selections.
+The HTML frame is memoized so React updates cannot reset DOM owned by the optical engine. A mutation observer registers new controls with the same glass material. Original feature layouts and flip/scratch/grid animation rules are scoped under the portal; a background .grid collision is explicitly neutralized there. Optical maps, spring and pointer engines are unchanged.
 
-The public `pulse-glass` Site uses the separately identified in-memory demo adapter. It does not promise persistent activities and never collects a real password. `vote.fflun.com` is unchanged. Backend integration is built and exercised locally; public backend deployment remains separate.
+## Function coverage
+- Original single/multi/unlimited/write-in voting, registration, deadlines and live polling.
+- Poll and draw creation templates, quantities, finite/unlimited blanks, roster configuration and reveal-mode selection.
+- Original flip, scratch and nine-grid reveal components.
+- Original histories, owner/admin views, close/delete confirmation, public-results switch, participant directory, roster checks, vote/claim exports, QR/link sharing.
+- Original real authentication routes/providers, API validators, permission checks and SQL repositories remain in the application. Previously authorized deadline, hydration, scratch and export corrections remain.
 
-Validation: 35 frontend tests, existing repository tests, typecheck, production build, lint (existing warnings only); browser checks of desktop/narrow layout, voting, saved vote after reload, creation, drawing, dialogs and console errors. A local seeded lunch poll received one synthetic QA vote. No production records were touched.
+## Public preview boundary
+ui-preview imports the same generated route tree, original feature components, original API validators/handlers and original repositories. Only its build config replaces the server transport/database with isolated browser PGlite and example identities. This preview never collects passwords or contacts the production backend. It is NOT shared persistent voting: refresh clears data, links/QR render but cannot transfer page-local activities to another visitor. Real app login and shared database behavior remain in the normal build. vote.fflun.com is unchanged.
+The preview's browser database adds approximately 16 MB of raw WASM/data assets; these are not in the normal production client.
 
-Preserved on disk: earlier UI experiments and authorized deadline/hydration/scratch/export corrections. No force push or history rewrite.
+## Verification
+Typecheck and production build pass. Lint has no errors (existing platform warnings plus preview Fast Refresh warnings). All 79 business/auth tests pass; 35 visual/physics tests pass. Browser QA: original creation form with roster, multi-select and write-in; successful vote; roster 1/2; TSV export content; draw template publication; nine-grid reveal and admin counts; public-results toggle; guest management gate; 390 px layout without horizontal overflow. Destructive deletion and real credential submission were not performed in the browser.
 
-Remaining production acceptance: hosting/database/auth configuration and full owner-flow acceptance with the intended deployment account; deep comparison/roster-directory and destructive deletion screens are not exposed in this frontend revision. Existing server functions remain available and enforce their original permissions.
+## Branches
+dev is the default. Old main had no unique commits and was 61 commits behind dev. It was archived at archive/main-2026-10-03 before local/remote branch removal. Feature work is validated on codex/pulse-glass-preview and fast-forwarded to dev without history rewriting.

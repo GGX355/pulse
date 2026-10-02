@@ -16,5 +16,5 @@ for (const name of await readdir(source)) {
 }
 const commit = execFileSync('git', ['-C', source, 'rev-parse', 'HEAD'], { encoding: 'utf8' }).trim();
 await writeFile(join(target, 'SOURCE.json'), JSON.stringify({ repository: 'https://github.com/GGX355/liquid-glass-template', directory: 'pulse-final', source_commit: commit, files }, null, 2) + '\n');
-await writeFile(join(target, 'pulse-runtime.d.ts'), 'export function mountPulse(options?: { business?: unknown }): { destroy(): void; setMode(mode: string): void };\n');
+await writeFile(join(target, 'pulse-runtime.d.ts'), 'export function mountPulse(options?: { business?: unknown; embedded?: boolean }): { destroy(): void; setMode(mode: string): void; refreshGlass(): void };\n');
 console.log(`Synced ${Object.keys(files).length} GitHub-owned frontend files with SHA-256 provenance.`);
