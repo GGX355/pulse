@@ -1,7 +1,7 @@
 import React, { useSyncExternalStore } from 'react';
 import { Link } from '@tanstack/react-router';
 const host = { id: 'preview-host', displayName: '示例发起人', isDevFallback: true };
-let user = host;
+let user = null;
 const listeners = new Set();
 export const currentPreviewUser = () => user;
 const subscribe = listener => { listeners.add(listener); return () => listeners.delete(listener); };

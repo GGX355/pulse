@@ -11,3 +11,13 @@
 @import 'tw-animate-css';
 @import '../../../vendor/pulse-final/pulse-feature-layout.css';
 @import '../../../vendor/pulse-final/pulse-app.css';
+
+/* Account tools stay out of the participant workspace, including on phones. */
+.pulse-application .pulse-account-nav { margin-left: auto; position: relative; z-index: 40; }
+.pulse-admin-menu summary { cursor: pointer; list-style: none; padding: 10px 12px; font-size: 13px; color: var(--muted); }
+.pulse-admin-menu summary::-webkit-details-marker { display: none; }
+.pulse-admin-menu-content { position: absolute; right: 0; top: calc(100% + 8px); width: 210px; display: grid; gap: 4px; padding: 12px; border: 1px solid var(--border); border-radius: 20px; background: var(--surface); color: var(--foreground); box-shadow: 0 16px 40px #0003; }
+.pulse-admin-menu-content a { padding: 10px 12px; border-radius: 12px; }
+.pulse-admin-menu-content a:hover { background: var(--surface-2); }
+.pulse-admin-menu-content small { padding: 8px 12px; font-size: 11px; color: var(--muted); }
+@media (max-width: 600px) { .pulse-application .site-header { gap: 6px; } .pulse-admin-menu summary { padding-inline: 8px; } }

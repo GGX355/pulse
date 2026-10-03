@@ -1,9 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
 import { LivePollView } from "@/components/poll/live-poll";
 import { DrawView } from "@/components/poll/draw-view";
 import { fetchHomeContent, type PollContent } from "@/lib/draw-api";
+import { useHomeActivity } from "@/components/final-glass/shell";
 
 export const Route = createFileRoute("/")({
   loader: () => fetchHomeContent(),
@@ -44,6 +45,7 @@ function Home() {
   cacheRef.current.set(contentId(latest), latest);
 
   const [holdId, setHoldId] = useState<string | null>(null);
+  const interacted = useRef(false);
   const prevLatestIdRef = useRef(contentId(initialData));
 
   useEffect(() => {
@@ -55,7 +57,7 @@ function Home() {
       // 只在"没在保持"时才决定要不要保持:已经在保持的人原地不动,不跳版本。
       if (holdId === null) {
         const prevContent = cacheRef.current.get(prevId);
-        if (prevContent && isMidFlow(prevContent)) setHoldId(prevId);
+        if (interacted.current && prevContent && isMidFlow(prevContent)) setHoldId(prevId);
       }
     }
     // 保持中的内容已经抽完/投完/结束 → 自动松手跟上最新。
@@ -66,10 +68,14 @@ function Home() {
   }, [latest, holdId]);
 
   const active = (holdId && cacheRef.current.get(holdId)) || latest;
+  const setHomeActivity = useHomeActivity();
+  useEffect(() => { setHomeActivity(active.kind); }, [active.kind, setHomeActivity]);
+  const activeId = contentId(active);
+  useEffect(() => { interacted.current = false; }, [activeId]);
   const hasNew = holdId !== null;
 
   return (
-    <>
+    <div onPointerDown={() => { interacted.current = true; }} onKeyDown={() => { interacted.current = true; }}>
       {hasNew ? (
         <div className="mb-6 flex items-center justify-between gap-3 rounded-xl border border-accent/30 bg-surface p-4">
           <p className="text-sm text-muted">有新内容发布</p>
@@ -94,12 +100,6 @@ function Home() {
               pollId={contentId(active)}
             />
           </div>
-          <p className="mt-10 text-sm text-muted">
-            往期投票见
-            <Link to="/polls" className="ml-2 text-foreground underline">
-              投票历史
-            </Link>
-          </p>
         </>
       ) : (
         <>
@@ -107,14 +107,8 @@ function Home() {
           <div className="mt-4" key={`draw-${contentId(active)}`}>
             <DrawView initialData={active.draw} pollId={contentId(active)} />
           </div>
-          <p className="mt-10 text-sm text-muted">
-            往期抽签见
-            <Link to="/draw/history" className="ml-2 text-foreground underline">
-              抽签历史
-            </Link>
-          </p>
         </>
       )}
-    </>
+    </div>
   );
 }

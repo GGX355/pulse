@@ -1,8 +1,13 @@
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import source from '../../../vendor/pulse-final/pulse.html?raw';
 import { mountPulse } from '../../../vendor/pulse-final/pulse-runtime.js';
+import { useCurrentUserState } from '@/lib/auth/use-current-user';
+import { isAdminEmail } from '@/lib/auth/admin';
+
+const HomeActivityContext = createContext<(kind: 'poll' | 'draw') => void>(() => {});
+export const useHomeActivity = () => useContext(HomeActivityContext);
 
 // GitHub owns the optical frame and workspace styles. The app mounts original
 // routes and moves their navigation/settings into the compact working shell.
@@ -19,21 +24,26 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   const [outlet, setOutlet] = useState<HTMLElement | null>(null);
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
+  const { user } = useCurrentUserState();
+  const isAdmin = !!user && (user.isDevFallback || isAdminEmail(user.primaryEmail));
+  const [homeKind, setHomeKind] = useState<'poll' | 'draw' | null>(null);
   const path = useRouterState({ select: state => state.location.pathname });
-  const activityMode = useRouterState({ select: state => {
+  const routeMode = useRouterState({ select: state => {
     const data = state.matches.at(-1)?.loaderData as { kind?: string } | undefined;
     const search = state.location.search as { kind?: string };
     return state.location.pathname.startsWith('/draw') || search.kind === 'draw' || data?.kind === 'draw' ? 'draw' : 'poll';
   } });
+  const activityMode = path === '/' && homeKind ? homeKind : routeMode;
+  const managementPage = path === '/new' || path === '/draw/new' || path === '/polls' || path === '/draw/history';
   const navigateRef = useRef(navigate); navigateRef.current = navigate;
   useEffect(() => {
     const frameRoot = host.current!;
     document.body.classList.add('pulse-site', 'pulse-application'); document.body.dataset.material = 'liquid';
     const element = document.createElement('div'); element.className = 'pulse-business-host'; element.id = 'pulse-original-routes';
-    const nav = document.createElement('nav'); nav.className = 'pulse-route-nav'; nav.setAttribute('aria-label', '完整活动功能');
+    const nav = document.createElement('nav'); nav.className = 'pulse-account-nav'; nav.setAttribute('aria-label', '管理员账号');
     host.current!.querySelector<HTMLElement>('#poll-panel')!.dataset.glass = '28';
     host.current!.querySelector('#poll-panel')!.append(element);
-    host.current!.querySelector('#pulse-stage')!.before(nav);
+    host.current!.querySelector('.site-header')!.append(nav);
     const settings = document.createElement('details'); settings.className = 'pulse-workspace-settings';
     const summary = document.createElement('summary'); summary.textContent = '外观';
     settings.append(summary);
@@ -79,11 +89,18 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   }, [outlet, path, activityMode]);
   return <>
     {frame}
-    {outlet && createPortal(children, outlet)}
+    {outlet && createPortal(<HomeActivityContext.Provider value={setHomeKind}>
+      {managementPage && !isAdmin ? <div className="py-8 text-center"><h1>管理员登录</h1><p className="my-4">活动管理和历史记录仅在管理员账号中显示。</p><Link to="/login">进入管理员账号</Link></div> : children}
+    </HomeActivityContext.Provider>, outlet)}
     {toolbar && createPortal(<>
-      <Link to="/">当前活动</Link><Link to="/polls">投票记录</Link><Link to="/draw/history">抽签记录</Link>
-      <Link to="/new">发起管理</Link><Link to="/login">账号</Link>
-      {import.meta.env.VITE_UI_PREVIEW && <span className="app-preview-label">示例数据 · 刷新后重置</span>}
+      <details className="pulse-admin-menu" key={path}>
+        <summary>管理员</summary>
+        <div className="pulse-admin-menu-content">
+          {isAdmin ? <><Link to="/new">发起与管理</Link><Link to="/polls">投票记录</Link><Link to="/draw/history">抽签记录</Link><Link to="/login">账号设置</Link></> : <Link to="/login">管理员登录</Link>}
+          <Link to="/">返回最新活动</Link>
+          {import.meta.env.VITE_UI_PREVIEW && <small>示例数据 · 刷新后重置</small>}
+        </div>
+      </details>
     </>, toolbar)}
   </>;
 }

@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { LivePollView } from "@/components/poll/live-poll";
 import { fetchLivePoll } from "@/lib/poll-api";
 
@@ -16,12 +16,6 @@ function VotePage() {
       <div className="mt-4">
         <LivePollView initialData={initialData} />
       </div>
-      <p className="mt-10 text-sm text-muted">
-        往期投票见
-        <Link to="/polls" className="ml-2 text-foreground underline">
-          投票历史
-        </Link>
-      </p>
     </>
   );
 }

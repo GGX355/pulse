@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
 import { DrawView } from "@/components/poll/draw-view";
 import { fetchLiveDraw } from "@/lib/draw-api";
 
@@ -22,16 +22,7 @@ function LiveDrawPage() {
           暂无进行中的抽签
         </h1>
         <p className="mt-3 text-sm text-muted">
-          发起一场即可现场扫码参与。
-          <Link to="/draw/new" className="ml-2 text-foreground underline">
-            新建抽签
-          </Link>
-        </p>
-        <p className="mt-10 text-sm text-muted">
-          投票内容见
-          <Link to="/polls" className="ml-2 text-foreground underline">
-            投票历史
-          </Link>
+          等待管理员发布新的抽签活动。
         </p>
       </>
     );
@@ -42,12 +33,6 @@ function LiveDrawPage() {
       <div key={draw.id}>
         <DrawView initialData={draw} pollId={draw.id} />
       </div>
-      <p className="mt-10 text-sm text-muted">
-        往期抽签见
-        <Link to="/draw/history" className="ml-2 text-foreground underline">
-          抽签历史
-        </Link>
-      </p>
     </>
   );
 }
