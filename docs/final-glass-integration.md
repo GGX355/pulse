@@ -36,3 +36,9 @@ Validation: typecheck, normal and static builds passed; lint has 0 errors and 7 
 Light workspace uses the header ivory background; dark uses the original PULSE near-black gradient and blue/violet light colours. The lab landscape is hidden only in embedded mode. Controls share convex edges and keep them after selection. React className changes are observed only when they remove the material class, restoring the existing surface without regenerating filters. Fixed the 54px label box inside a 44px navigation pill, centred activity headings, and unified history cards and 44px delete targets.
 
 Browser regression: repeated single/multiple-choice toggles retain liquid-surface and glass-overlay; voting and pointer exit retain the selected convex face. Light/dark 390px and history at 320px render without horizontal overflow.
+
+## Readable draw surfaces (2026-10-03)
+
+Removed the laboratory scene class from the original draw-grid: it was imposing a dark background, fixed display height and light text on the functional card grid. Explicitly styled front/back faces in both themes, retained preserve-3d on the turning parent, and added card index and clear reveal labels. The 700ms flip now completes before the result wall replaces it at 1100ms. Dark surfaces use separate charcoal/page and blue-grey/card levels with lower pointer-glare opacity. Only browser sample activity/prize names changed, never existing stored activities.
+
+Browser QA: desktop flip captured mid-rotation, final result matches the selected card and recorded result; mobile light/dark card faces, scratch/grid selection, 320px overflow and console checks passed.

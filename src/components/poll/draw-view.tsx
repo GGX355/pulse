@@ -35,9 +35,9 @@ import { jelly, confetti } from "@/lib/motion";
 type Mode = RevealMode;
 
 const MODES: Array<{ id: Mode; label: string }> = [
-  { id: "flip", label: "🂠 翻牌" },
-  { id: "scratch", label: "✦ 刮奖" },
-  { id: "grid", label: "▦ 九宫格" },
+  { id: "flip", label: "翻牌揭晓" },
+  { id: "scratch", label: "刮开揭晓" },
+  { id: "grid", label: "九宫格" },
 ];
 
 /** 发起人没选的模式不出现;当前档不在配置里时回落到第一个可选档。 */
@@ -280,8 +280,9 @@ export function DrawView({
         return;
       }
       setFlipping(true);
-      window.setTimeout(() => setFlipping(false), 500);
-      window.setTimeout(() => finishReveal(result.myDraw!.label), 550);
+      window.setTimeout(() => setFlipping(false), 720);
+      // Let the 700ms turn finish and leave its result readable before the wall.
+      window.setTimeout(() => finishReveal(result.myDraw!.label), 1100);
     });
   }
 
@@ -570,6 +571,7 @@ export function DrawView({
                 <button
                   key={m.id}
                   type="button"
+                  aria-pressed={mode === m.id}
                   className={cn("seg-item", mode === m.id && "on")}
                   onClick={() => {
                     if (performing || rolling || flipping || scratchReady || gridRolling)
@@ -586,7 +588,7 @@ export function DrawView({
           <div ref={panelRef} className="glass stage-panel p-5">
             {/* 模式一:翻牌 */}
             <div className={cn("stage", mode === "flip" && "on")} id="stage-flip">
-              <div className="draw-grid scene">
+              <div className="draw-grid">
                 {slots.map((slot, index) => {
                   const mine = mySlotId === slot.id;
                   return (
@@ -611,12 +613,15 @@ export function DrawView({
                       }}
                     >
                       <div className="dc-face dc-front">
-                        <span className="block truncate font-medium text-foreground">
+                        <span className="dc-card-index" aria-hidden="true">{String(index + 1).padStart(2, "0")}</span>
+                        <svg className="dc-card-mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 5 34 20 20 35 6 20Z"/><path d="M20 12 27 20 20 28 13 20Z"/></svg>
+                        <span className="dc-front-value font-medium text-foreground">
                           {slot.label}
                         </span>
+                        <span className="dc-card-hint">轻点抽取</span>
                       </div>
                       <div className="dc-face dc-back">
-                        <span className="dc-back-label">你抽到了</span>
+                        <span className="dc-back-label">本次抽签结果</span>
                         <span className="dc-back-value">{slot.label}</span>
                       </div>
                     </div>
@@ -628,7 +633,7 @@ export function DrawView({
                   ? `抽取中… ${rollLabel}`
                   : mySlotId !== null
                     ? "结果已定 · 全场揭晓"
-                    : "点任意一张卡翻开"}
+                    : "轻点任意卡片，随机抽取并揭晓结果"}
               </p>
             </div>
 

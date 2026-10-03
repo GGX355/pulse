@@ -20,8 +20,8 @@ async function initialize() {
   }
   const sql = { query: async (text, params = []) => (await db.query(text, params)).rows };
   await createDraw(sql, 'preview-host', {
-    title: '我的小幸运', slots: [{ label: '一份轻松', count: 3 }, { label: '一场相遇', count: 3 }, { label: '一个好消息', count: 3 }],
-    blankLabel: null, blankCount: null, voterNoteLabel: '', rosterNames: [], revealModes: ['flip','scratch','grid'], description: '示例活动 · 试试三种揭晓方式', resultsPublic: false,
+    title: '周末好礼抽签', slots: [{ label: '咖啡券', count: 3 }, { label: '电影票', count: 3 }, { label: '甜品券', count: 3 }],
+    blankLabel: null, blankCount: null, voterNoteLabel: '', rosterNames: [], revealModes: ['flip','scratch','grid'], description: '示例奖品，仅供体验 · 选择一种方式揭晓结果', resultsPublic: false,
   });
   await createPoll(sql, '这个周末，我们去哪？', ['山野徒步', '城市漫游', '找间咖啡馆'], 'preview-host', '', 1, '', [], '示例活动 · 每一票都值得被看见', null);
   return sql;
