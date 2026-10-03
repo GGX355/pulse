@@ -153,3 +153,17 @@ test("roster name deduplication and latest published activity", async () => {
   await a("closeLivePoll", { pollId: d.id });
   assert.equal((await c("fetchHomeContent")).body.poll.id, p.id);
 });
+
+test('saved class roster is administrator-only and rejects duplicate names',async()=>{
+ const {client}=setup(),a=client(),guest=client();
+ assert.equal((await guest('getClassRoster')).status,401);
+ assert.equal((await guest('setClassRoster',{name:'测试班',names:['测试甲']})).status,401);
+ await a('login',{password});
+ assert.equal((await a('getClassRoster')).body,null);
+ const roster={name:'测试班',names:['测试甲','测试乙']};
+ assert.equal((await a('setClassRoster',roster)).status,200);
+ assert.deepEqual((await a('getClassRoster')).body,roster);
+ assert.equal((await a('setClassRoster',{name:'测试班',names:['测试甲','测试甲']})).status,400);
+ assert.deepEqual((await a('getClassRoster')).body,roster);
+ assert.equal((await guest('fetchHomeContent')).body,null);
+});

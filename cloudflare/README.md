@@ -1,6 +1,6 @@
 # Cloudflare application adapter
 
-Status on 2026-10-03: deployed and live-verified at https://vote.fflun.com/. Deployment: e21e1dc7-3a47-4f97-8c22-8b7c60f81aea. The owner saved the production password secret before deployment.
+Status on 2026-10-03: deployed and live-verified at https://vote.fflun.com/. Deployment: 4659b336-d8e2-4dbc-9e48-f505a274e115. The owner saved the production password secret before deployment.
 
 This build preserves the PULSE dev React routes and the pinned glass renderer. `npm run build:cloudflare` replaces browser-local preview APIs with same-origin calls to `worker.js`. The original PostgreSQL/Better Auth application remains available via the normal build; the new score/privacy controls are enabled only in the Cloudflare build.
 
@@ -23,7 +23,7 @@ This build preserves the PULSE dev React routes and the pinned glass renderer. `
 4. Upload the **contents** of `artifacts/cloudflare-dist/` as a ZIP through Pages direct upload. `_worker.js` must be at the ZIP root. Do not upload `cloudflare/` sources, local QA server or test files.
 5. After deploying, verify real login/logout, cross-browser shared activity, private result responses and mobile rendering on the custom domain.
 
-Prepared package: `C:/Users/CYZ20/Documents/GitHub/pulse-ui-site/evidence/pulse-cloudflare-auth-score-20261003.zip`.
+Prepared package: `C:/Users/CYZ20/Documents/GitHub/pulse-ui-site/evidence/pulse-cloudflare-roster-20261003.zip`.
 
 Local QA uses `node cloudflare/preview.mjs` with an in-memory SQLite database and a synthetic test credential. That server is not deployed. Vite development mode uses `npm run dev -- --config cloudflare/vite.config.mjs --port 8097` and proxies the API to that local server.
 
@@ -34,3 +34,9 @@ Each activity and its submissions are stored in one versioned D1 row. Updates us
 Participant identity is a long-lived browser cookie, matching the original anonymous participation model. It is not proof of a person's real identity; a roster enforces one submission per entered name but does not authenticate the name. Public poll results include option counts and submitted notes/write-ins; private polls return only the current browser's choice/score and no other participants' counts or content, even after closing. Draw reveal behavior and weighted random allocation follow the original dev implementation.
 
 Local verification completed: all 79 existing data/auth tests, the existing script tests, five Cloudflare integration tests, typecheck, original full build and Cloudflare build; lint has no errors. Browser verification covered password login/logout, score creation and submission, desktop/mobile and light/dark modes. Live checks passed: administrator login/logout, unauthorized rejection, shared voting records across independent cookie sessions, private data redaction including after closing, numeric bounds/duplicate rejection/average, latest-activity routing and final draw capacity. Three synthetic QA activities were soft-deleted afterwards. Browser login and mobile 390px admin settings rendered without overflow or console errors; balanced profile and absent appearance button were verified.
+
+## Saved class roster
+
+Administrators can reuse a named roster in both creation forms. getClassRoster and setClassRoster require administrator authentication; the latter validates unique nonempty names. The settings table is created lazily and idempotently in D1. Names are server data, never bundled into source. Applying a saved roster enables name registration and roster validation without publishing an activity.
+
+Verified on 2026-10-03: six Cloudflare integration tests pass, typecheck and both builds pass, lint has no errors (12 existing warnings). Live saved-roster read/write and guest denial passed; both forms populated the saved roster correctly. Existing activities were unchanged.

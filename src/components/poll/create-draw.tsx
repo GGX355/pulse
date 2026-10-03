@@ -1,3 +1,4 @@
+import { SavedClassRoster } from "./saved-class-roster";
 import { useMutation } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
@@ -300,6 +301,7 @@ export function CreateDrawForm() {
 
       <div className="flex flex-col gap-3">
         <Label>名单核对</Label>
+        <SavedClassRoster onUse={names=>{setRosterOn(true);setRosterText(names.join("\n"));setAskName(true);setNoteLabel("姓名");}} />
         <SegmentToggle
           ariaLabel="名单核对"
           value={rosterOn ? "on" : "off"}

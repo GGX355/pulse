@@ -212,6 +212,19 @@ export default {
           await env.DB.prepare("DELETE FROM sessions WHERE token=?").bind(tokenHash).run();
         cookie("pulse_session", "", 0);
         result = null;
+      } else if (op === "getClassRoster" || op === "setClassRoster") {
+        requireAdmin();
+        await env.DB.prepare("CREATE TABLE IF NOT EXISTS settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)").bind().run();
+        if (op === "setClassRoster") {
+          if (!Array.isArray(data.names) || data.names.length > 500) fail("名单格式无效");
+          const names = data.names.map(name => text(name, 40, true));
+          if (new Set(names).size !== names.length) fail("名单中有重复姓名");
+          result = { name: text(data.name, 40, true), names };
+          await env.DB.prepare("INSERT INTO settings(key,value) VALUES('class-roster',?) ON CONFLICT(key) DO UPDATE SET value=excluded.value").bind(JSON.stringify(result)).run();
+        } else {
+          const row = await env.DB.prepare("SELECT value FROM settings WHERE key=?").bind('class-roster').first();
+          result = row ? JSON.parse(row.value) : null;
+        }
       } else {
         const all = async () =>
           (
