@@ -31,6 +31,7 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
     document.body.classList.add('pulse-site', 'pulse-application'); document.body.dataset.material = 'liquid';
     const element = document.createElement('div'); element.className = 'pulse-business-host'; element.id = 'pulse-original-routes';
     const nav = document.createElement('nav'); nav.className = 'pulse-route-nav'; nav.setAttribute('aria-label', '完整活动功能');
+    host.current!.querySelector<HTMLElement>('#poll-panel')!.dataset.glass = '28';
     host.current!.querySelector('#poll-panel')!.append(element);
     host.current!.querySelector('#pulse-stage')!.before(nav);
     const settings = document.createElement('details'); settings.className = 'pulse-workspace-settings';
@@ -60,9 +61,14 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
       const selected = host.current!.querySelector('.pulse-nav [aria-selected="true"]');
       void navigateRef.current({ to: selected?.id === 'draw-tab' ? '/draw' : '/vote' });
     }, { signal: controller.signal });
-    const observer = new MutationObserver(() => app.refreshGlass());
-    observer.observe(element, { childList: true, subtree: true });
-    observer.observe(nav, { childList: true, subtree: true });
+    const observer = new MutationObserver(records => {
+      if (records.some(record => record.type === 'childList' ||
+        (record.target instanceof Element && record.target.hasAttribute('data-glass') &&
+          !record.target.classList.contains('liquid-surface')))) app.refreshGlass();
+    });
+    const observedChanges = { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] };
+    observer.observe(element, observedChanges);
+    observer.observe(nav, observedChanges);
     return () => { observer.disconnect(); controller.abort(); app.destroy(); frameRoot.querySelector('main')?.append(controls); settings.remove(); element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
   }, []);
   useEffect(() => {

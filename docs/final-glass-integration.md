@@ -30,3 +30,9 @@ dev is the default. Old main had no unique commits and was 61 commits behind dev
 The embedded app hides laboratory marketing, stories, sample interactions and decorative side panels. Original route content fills the single-column glass workspace. On mobile the card uses almost the whole viewport width and long forms scroll with the document. Appearance controls live in a compact header disclosure. Two-tab navigation retains the original spring and routes both pointer and keyboard input to the original vote/draw pages. Optical parameters and business routes are unchanged.
 
 Validation: typecheck, normal and static builds passed; lint has 0 errors and 7 existing warnings; 15 motion/transition tests passed. Browser checks at 390 and 320 CSS pixels found no horizontal overflow. Sample voting, keyboard mode switching and creation of a new poll passed; long forms have no internal height cap.
+
+## Neutral themes and persistent material (2026-10-03)
+
+Light workspace uses the header ivory background; dark uses the original PULSE near-black gradient and blue/violet light colours. The lab landscape is hidden only in embedded mode. Controls share convex edges and keep them after selection. React className changes are observed only when they remove the material class, restoring the existing surface without regenerating filters. Fixed the 54px label box inside a 44px navigation pill, centred activity headings, and unified history cards and 44px delete targets.
+
+Browser regression: repeated single/multiple-choice toggles retain liquid-surface and glass-overlay; voting and pointer exit retain the selected convex face. Light/dark 390px and history at 320px render without horizontal overflow.
