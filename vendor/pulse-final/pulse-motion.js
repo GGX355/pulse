@@ -62,10 +62,13 @@ export function elasticFeedback({ canAnimate }) {
 export function labNavigation({ rail, canAnimate, count = 3 }) {
   const indicator = rail.querySelector('.nav-indicator');
   let animation = null;
+  let selectedIndex = null;
   const stop = () => { animation?.cancel(); animation = null; };
   rail.classList.add('lab-nav');
   return {
     select(index) {
+      if (index === selectedIndex) return;
+      selectedIndex = index;
       indicator.style.left = `calc(7px + (100% - 14px) * ${index}/${count})`;
       stop();
       if (!canAnimate()) return;

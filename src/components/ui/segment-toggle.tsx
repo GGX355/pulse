@@ -1,4 +1,5 @@
 import { cn } from "@/lib/utils";
+import type { CSSProperties } from "react";
 
 /**
  * 液态玻璃分段切换:玻璃药丸容器 + 滑动高亮块。
@@ -32,7 +33,7 @@ export function SegmentToggle({
         "relative grid w-full max-w-sm rounded-full border border-border bg-surface p-1",
         className,
       )}
-      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))` }}
+      style={{ gridTemplateColumns: `repeat(${n}, minmax(0, 1fr))`, '--segment-count': n } as CSSProperties}
     >
       <span
         aria-hidden

@@ -1,6 +1,19 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { springStep, surfaceFrames } from './pulse-motion.js';
+import { springStep, surfaceFrames, labNavigation } from './pulse-motion.js';
+
+test('route synchronization does not restart the same navigation bounce', () => {
+  let animations = 0, cancellations = 0;
+  const indicator = {style:{}, animate:()=>{animations++;return {finished:Promise.resolve(),cancel(){cancellations++;}};}};
+  const navigation = labNavigation({rail:{querySelector:()=>indicator,classList:{add(){}}},canAnimate:()=>true,count:2});
+  navigation.select(0);
+  navigation.select(1);
+  navigation.select(1);
+  assert.equal(animations,2);
+  assert.equal(cancellations,1);
+  navigation.select(0);
+  assert.equal(animations,3);
+});
 
 function simulate(hz, duration = 2) {
   let position = 0, velocity = 0, peak = 0;

@@ -1,6 +1,6 @@
 # Cloudflare application adapter
 
-Status on 2026-10-03: deployed and live-verified at https://vote.fflun.com/. Deployment: 4659b336-d8e2-4dbc-9e48-f505a274e115. The owner saved the production password secret before deployment.
+Status on 2026-10-03: deployed and live-verified at https://vote.fflun.com/. Deployment: f05e13c2-c3de-4708-aed0-5714e76cfdee. The owner saved the production password secret before deployment.
 
 This build preserves the PULSE dev React routes and the pinned glass renderer. `npm run build:cloudflare` replaces browser-local preview APIs with same-origin calls to `worker.js`. The original PostgreSQL/Better Auth application remains available via the normal build; the new score/privacy controls are enabled only in the Cloudflare build.
 
@@ -23,7 +23,7 @@ This build preserves the PULSE dev React routes and the pinned glass renderer. `
 4. Upload the **contents** of `artifacts/cloudflare-dist/` as a ZIP through Pages direct upload. `_worker.js` must be at the ZIP root. Do not upload `cloudflare/` sources, local QA server or test files.
 5. After deploying, verify real login/logout, cross-browser shared activity, private result responses and mobile rendering on the custom domain.
 
-Prepared package: `C:/Users/CYZ20/Documents/GitHub/pulse-ui-site/evidence/pulse-cloudflare-roster-20261003.zip`.
+Prepared package: `C:/Users/CYZ20/Documents/GitHub/pulse-ui-site/evidence/pulse-cloudflare-readability-20261003.zip`.
 
 Local QA uses `node cloudflare/preview.mjs` with an in-memory SQLite database and a synthetic test credential. That server is not deployed. Vite development mode uses `npm run dev -- --config cloudflare/vite.config.mjs --port 8097` and proxies the API to that local server.
 
@@ -40,3 +40,9 @@ Local verification completed: all 79 existing data/auth tests, the existing scri
 Administrators can reuse a named roster in both creation forms. getClassRoster and setClassRoster require administrator authentication; the latter validates unique nonempty names. The settings table is created lazily and idempotently in D1. Names are server data, never bundled into source. Applying a saved roster enables name registration and roster validation without publishing an activity.
 
 Verified on 2026-10-03: six Cloudflare integration tests pass, typecheck and both builds pass, lint has no errors (12 existing warnings). Live saved-roster read/write and guest denial passed; both forms populated the saved roster correctly. Existing activities were unchanged.
+
+## Admin material and motion repair
+
+The admin menu now uses defined, opaque theme surfaces instead of missing CSS variables. Admin workspaces and inputs have stable readable backing; per-row staggered fade/scale is removed. Segmented selection draws one moving face and rim, and repeated route synchronization no longer restarts the navigation bounce. Touch pointers do not trigger button scale rebounds while scrolling. The lab optics remain in place.
+
+Verified: typecheck, both builds, four motion tests including duplicate-selection regression; lint has zero errors and 12 existing warnings. Browser checks covered desktop light and 390px dark admin pages and live menu/form switching, no horizontal overflow. Actual phone touch compositor behavior is not verified by desktop emulation.

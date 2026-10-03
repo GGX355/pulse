@@ -82,10 +82,11 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   }, []);
   useEffect(() => {
     if (!outlet || !mounted.current) return;
+    outlet.classList.toggle('pulse-admin-page', managementPage || path === '/login');
     mounted.current.setMode(activityMode);
     outlet.scrollTop = 0;
     mounted.current.refreshGlass();
-  }, [outlet, path, activityMode]);
+  }, [outlet, path, activityMode, managementPage]);
   return <>
     {frame}
     {outlet && createPortal(<HomeActivityContext.Provider value={setHomeKind}>
