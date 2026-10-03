@@ -20,7 +20,7 @@ function isMidFlow(content: PollContent): boolean {
   if (content.kind === "draw") {
     return !content.draw.closed && content.draw.blind;
   }
-  return !content.poll.closed && content.poll.votedIds.length === 0;
+  return !content.poll.closed && content.poll.votedIds.length === 0 && content.poll.myScore == null;
 }
 
 /**
@@ -29,7 +29,12 @@ function isMidFlow(content: PollContent): boolean {
  * (没投完/没抽完)时先留住当前内容,给一条「立即查看」,不硬切。
  */
 function Home() {
-  const initialData = Route.useLoaderData();
+  const initial = Route.useLoaderData();
+  const {data} = useQuery({queryKey:["home-content"],queryFn:()=>fetchHomeContent(),initialData:initial,refetchInterval:2000});
+  if (!data) return <p className="py-10 text-center text-muted">暂无活动</p>;
+  return <ActiveHome initialData={data} />;
+}
+function ActiveHome({initialData}: {initialData: PollContent}) {
   const latestQuery = useQuery({
     queryKey: ["home-content"],
     queryFn: () => fetchHomeContent(),
@@ -91,7 +96,6 @@ function Home() {
 
       {active.kind === "poll" ? (
         <>
-          <p className="text-xs font-medium tracking-wide text-muted">最新投票</p>
           <div className="mt-4" key={`poll-${contentId(active)}`}>
             {/* 必须钉住这条投票自己的 id:不带 id 时内层会去轮"最新进行中投票",
                 主页一旦保持旧内容,画面就会被内层偷偷换成新的。 */}
@@ -103,7 +107,6 @@ function Home() {
         </>
       ) : (
         <>
-          <p className="text-xs font-medium tracking-wide text-muted">最新抽签</p>
           <div className="mt-4" key={`draw-${contentId(active)}`}>
             <DrawView initialData={active.draw} pollId={contentId(active)} />
           </div>

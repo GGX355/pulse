@@ -15,17 +15,7 @@ function LiveDrawPage() {
   const draw = Route.useLoaderData();
 
   if (!draw) {
-    return (
-      <>
-        <p className="text-xs font-medium tracking-wide text-muted">抽签</p>
-        <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
-          暂无进行中的抽签
-        </h1>
-        <p className="mt-3 text-sm text-muted">
-          等待管理员发布新的抽签活动。
-        </p>
-      </>
-    );
+    return <p className="py-10 text-center text-muted">暂无抽签</p>;
   }
 
   return (

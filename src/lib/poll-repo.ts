@@ -18,6 +18,15 @@ export type PollOption = {
 };
 
 export type LivePoll = {
+  pollType?: 'choice' | 'score';
+  resultsVisible?: boolean;
+  resultsPublic?: boolean;
+  myScore?: number | null;
+  scoreMin?: number;
+  scoreMax?: number;
+  scoreStep?: number;
+  scoreAverage?: number | null;
+  scoreCount?: number | null;
   id: string;
   question: string;
   options: PollOption[];

@@ -25,7 +25,7 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   const [toolbar, setToolbar] = useState<HTMLElement | null>(null);
   const navigate = useNavigate();
   const { user } = useCurrentUserState();
-  const isAdmin = !!user && (user.isDevFallback || isAdminEmail(user.primaryEmail));
+  const isAdmin = !!user && (('isAdmin' in user && user.isAdmin === true) || user.isDevFallback || isAdminEmail(user.primaryEmail));
   const [homeKind, setHomeKind] = useState<'poll' | 'draw' | null>(null);
   const path = useRouterState({ select: state => state.location.pathname });
   const routeMode = useRouterState({ select: state => {
@@ -44,12 +44,11 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
     host.current!.querySelector<HTMLElement>('#poll-panel')!.dataset.glass = '28';
     host.current!.querySelector('#poll-panel')!.append(element);
     host.current!.querySelector('.site-header')!.append(nav);
-    const settings = document.createElement('details'); settings.className = 'pulse-workspace-settings';
-    const summary = document.createElement('summary'); summary.textContent = '外观';
-    settings.append(summary);
     const controls = host.current!.querySelector<HTMLElement>('.pulse-controls')!;
-    settings.append(controls);
-    host.current!.querySelector('.site-header')!.append(settings);
+    controls.hidden = true;
+    const theme = host.current!.querySelector('#pulse-theme');
+    if (theme) host.current!.querySelector('.site-header')!.append(theme);
+    try { localStorage.setItem('pulse-liquid-profile', 'balanced'); } catch { /* Optional persistence. */ }
     setOutlet(element); setToolbar(nav);
     const app = mountPulse({ embedded: true }); mounted.current = app;
     const preview = import.meta.env.VITE_UI_PREVIEW;
@@ -79,7 +78,7 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
     const observedChanges = { childList: true, subtree: true, attributes: true, attributeFilter: ['class'] };
     observer.observe(element, observedChanges);
     observer.observe(nav, observedChanges);
-    return () => { observer.disconnect(); controller.abort(); app.destroy(); frameRoot.querySelector('main')?.append(controls); settings.remove(); element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
+    return () => { observer.disconnect(); controller.abort(); app.destroy(); frameRoot.querySelector('main')?.append(controls); controls.hidden = false; element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
   }, []);
   useEffect(() => {
     if (!outlet || !mounted.current) return;
@@ -90,7 +89,7 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   return <>
     {frame}
     {outlet && createPortal(<HomeActivityContext.Provider value={setHomeKind}>
-      {managementPage && !isAdmin ? <div className="py-8 text-center"><h1>管理员登录</h1><p className="my-4">活动管理和历史记录仅在管理员账号中显示。</p><Link to="/login">进入管理员账号</Link></div> : children}
+      {managementPage && !isAdmin ? <div className="py-8 text-center"><h1>管理员登录</h1><Link to="/login">进入管理员账号</Link></div> : children}
     </HomeActivityContext.Provider>, outlet)}
     {toolbar && createPortal(<>
       <details className="pulse-admin-menu" key={path}>
@@ -98,7 +97,7 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
         <div className="pulse-admin-menu-content">
           {isAdmin ? <><Link to="/new">发起与管理</Link><Link to="/polls">投票记录</Link><Link to="/draw/history">抽签记录</Link><Link to="/login">账号设置</Link></> : <Link to="/login">管理员登录</Link>}
           <Link to="/">返回最新活动</Link>
-          {import.meta.env.VITE_UI_PREVIEW && <small>示例数据 · 刷新后重置</small>}
+          {import.meta.env.VITE_UI_PREVIEW && !import.meta.env.VITE_CF_APP && <small>示例数据 · 刷新后重置</small>}
         </div>
       </details>
     </>, toolbar)}

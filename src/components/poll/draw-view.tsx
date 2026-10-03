@@ -526,7 +526,6 @@ export function DrawView({
   return (
     <section className="flex flex-col gap-6">
       <div>
-        <p className="text-xs font-medium tracking-wide text-muted">抽签</p>
         <h1 className="mt-2 font-display text-2xl font-semibold tracking-tight text-foreground">
           {draw.title}
           {draw.closed ? <span className="stamp ml-3 align-middle">已结束</span> : null}
@@ -559,7 +558,7 @@ export function DrawView({
               >
                 {noteNudge
                   ? `请先填写${initialData.voterNoteLabel}再抽`
-                  : `抽签前需填写${initialData.voterNoteLabel} · 揭晓动画任选其一`}
+                  : `请填写${initialData.voterNoteLabel}`}
               </p>
             </div>
           ) : null}
@@ -621,7 +620,7 @@ export function DrawView({
                         <span className="dc-card-hint">轻点抽取</span>
                       </div>
                       <div className="dc-face dc-back">
-                        <span className="dc-back-label">本次抽签结果</span>
+                        <span className="dc-back-label">抽签结果</span>
                         <span className="dc-back-value">{slot.label}</span>
                       </div>
                     </div>
@@ -662,10 +661,10 @@ export function DrawView({
                     </div>
                     <canvas id="draw-foil" />
                   </div>
-                  <p className="tip">按住鼠标 <b>刮开涂层</b></p>
+                  <p className="tip"><b>刮开</b></p>
                 </div>
               ) : (
-                <p className="tip">点一张牌,再把结果刮出来</p>
+                <p className="tip">选一张</p>
               )}
             </div>
 

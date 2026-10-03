@@ -10,9 +10,9 @@ export const Route = createFileRoute("/vote")({
 
 function VotePage() {
   const initialData = Route.useLoaderData();
+  if (!initialData) return <p className="py-10 text-center text-muted">暂无投票</p>;
   return (
     <>
-      <p className="text-xs font-medium tracking-wide text-muted">投票</p>
       <div className="mt-4">
         <LivePollView initialData={initialData} />
       </div>

@@ -21,3 +21,11 @@
 .pulse-admin-menu-content a:hover { background: var(--surface-2); }
 .pulse-admin-menu-content small { padding: 8px 12px; font-size: 11px; color: var(--muted); }
 @media (max-width: 600px) { .pulse-application .site-header { gap: 6px; } .pulse-admin-menu summary { padding-inline: 8px; } }
+
+.pulse-application .pulse-controls[hidden]{display:none!important}
+.pulse-application .site-header #pulse-theme{order:99;margin-left:0;flex-shrink:0}
+.pulse-application .pulse-account-nav{margin-left:auto}
+.pulse-application .poll-private .poll-option-fill,.pulse-application .poll-private .poll-option .tabular-nums{display:none}
+
+body.pulse-application{min-height:100svh}
+html:has(body.pulse-application.dark){background:#17212a}

@@ -17,6 +17,7 @@ export const Route = createFileRoute("/draw/$drawId")({
 });
 
 function DrawDetailPage() {
+  const { user } = useCurrentUserState();
   const initialData = Route.useLoaderData();
   const { drawId } = Route.useParams();
 
@@ -35,7 +36,7 @@ function DrawDetailPage() {
     <>
       <DrawView initialData={initialData} pollId={drawId} />
       <CloseDrawButton drawId={drawId} />
-      <SharePoll />
+      {user && <SharePoll />}
     </>
   );
 }

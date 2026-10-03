@@ -1,7 +1,8 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { useNavigate } from "@tanstack/react-router";
 import { useState } from "react";
-import { createLivePoll, type LivePoll } from "@/lib/poll-api";
+import { type LivePoll } from "@/lib/poll-api";
+import { createLivePoll } from "@/lib/poll-submit";
 import { RedirectToSignIn } from "@/lib/auth/gates";
 import { useCurrentUserState } from "@/lib/auth/use-current-user";
 import { Button } from "@/components/ui/button";
@@ -21,6 +22,11 @@ export function CreatePollForm() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { user, isPending } = useCurrentUserState();
+  const [pollType, setPollType] = useState('choice');
+  const [resultsPublic, setResultsPublic] = useState(false);
+  const [scoreMin, setScoreMin] = useState(0);
+  const [scoreMax, setScoreMax] = useState(100);
+  const [scoreStep, setScoreStep] = useState(1);
   const [question, setQuestion] = useState("午饭吃什么？");
   const [description, setDescription] = useState("");
   const [closesAtISO, setClosesAtISO] = useState("");
@@ -48,8 +54,9 @@ export function CreatePollForm() {
       createLivePoll({
         data: {
           question,
+          pollType, resultsPublic, scoreMin, scoreMax, scoreStep,
           description: description.trim(),
-          closesAtISO: closesAtISO || undefined,
+          closesAtISO: closesAtISO ? new Date(closesAtISO).toISOString() : undefined,
           options: options.map((o) => o.trim()).filter(Boolean),
           voterNoteLabel: askNote || rosterOn ? noteLabel.trim() : "",
           maxChoices:
@@ -89,7 +96,7 @@ export function CreatePollForm() {
       className="glass stage-panel flex flex-col gap-6 rounded-[var(--r-lg)] p-5 animate-in fade-in slide-in-from-bottom-3 duration-500"
       onSubmit={(e) => {
         e.preventDefault();
-        if (optionCount < 2 || optionCount > 8 || !question.trim()) return;
+        if ((pollType === 'choice' && (optionCount < 2 || optionCount > 8)) || !question.trim()) return;
         if (askNote && !noteLabel.trim()) return;
         if (includeWriteIn && !writeInLabel.trim()) return;
         create.mutate();
@@ -102,7 +109,16 @@ export function CreatePollForm() {
         <p className="mt-2 text-sm text-muted">发布后显示在投票页。</p>
       </div>
 
-      <div className="flex flex-wrap gap-2">
+      {import.meta.env.VITE_CF_APP && <>
+        <div className="flex flex-col gap-2"><Label>投票方式</Label><SegmentToggle ariaLabel="投票方式" value={pollType} onChange={setPollType} options={[{value:'choice',label:'选择'},{value:'score',label:'数字打分'}]} /></div>
+        <div className="flex flex-col gap-2"><Label>结果可见性</Label><SegmentToggle ariaLabel="结果可见性" value={resultsPublic ? 'public':'private'} onChange={v=>setResultsPublic(v==='public')} options={[{value:'private',label:'仅看自己的'},{value:'public',label:'公开实时结果'}]} /></div>
+        {pollType === 'score' && <div className="grid grid-cols-3 gap-3">
+          <label>最低分<Input type="number" value={scoreMin} onChange={e=>setScoreMin(Number(e.target.value))} /></label>
+          <label>最高分<Input type="number" value={scoreMax} onChange={e=>setScoreMax(Number(e.target.value))} /></label>
+          <label>步长<Input type="number" min="0.01" step="any" value={scoreStep} onChange={e=>setScoreStep(Number(e.target.value))} /></label>
+        </div>}
+      </>}
+      {pollType === "choice" && <div className="flex flex-wrap gap-2">
         {TEMPLATES.map((tpl) => (
           <button
             key={tpl.name}
@@ -122,7 +138,7 @@ export function CreatePollForm() {
             {tpl.name}
           </button>
         ))}
-      </div>
+      </div>}
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="q">问题</Label>
@@ -227,6 +243,7 @@ export function CreatePollForm() {
         ) : null}
       </div>
 
+      {pollType === 'choice' && <>
       <div className="flex flex-col gap-2">
         <Label>可选项数</Label>
         <SegmentToggle
@@ -322,16 +339,18 @@ export function CreatePollForm() {
         ) : null}
       </div>
 
+      </>}
+
       {create.isError ? (
-        <p className="text-sm text-muted">创建失败，请重试。</p>
+        <p className="text-sm text-muted">{create.error.message || "创建失败，请重试。"}</p>
       ) : null}
 
       <Button
         type="submit"
         disabled={
           create.isPending ||
-          optionCount < 2 ||
-          optionCount > 8 ||
+          (pollType === 'choice' && (optionCount < 2 || optionCount > 8)) ||
+          (pollType === 'score' && (scoreMin >= scoreMax || scoreStep <= 0)) ||
           !question.trim() ||
           (askNote && !noteLabel.trim()) ||
           (includeWriteIn && !writeInLabel.trim())

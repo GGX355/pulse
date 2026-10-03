@@ -31,6 +31,7 @@ export const Route = createFileRoute("/poll/$pollId")({
 });
 
 function PollDetailPage() {
+  const { user } = useCurrentUserState();
   const initialData = Route.useLoaderData();
   const { pollId } = Route.useParams();
 
@@ -57,7 +58,7 @@ function PollDetailPage() {
           initialData?.kind === "poll" ? initialData.poll.creatorId : null
         }
       />
-      <SharePoll />
+      {user && <SharePoll />}
     </>
   );
 }

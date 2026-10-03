@@ -1,3 +1,4 @@
+import { ScorePoll } from "./score-poll";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { Link } from "@tanstack/react-router";
 import { useEffect, useRef, useState } from "react";
@@ -178,9 +179,11 @@ export function LivePollView({
     return <p className="text-sm text-muted">加载中</p>;
   }
 
+  if (poll.pollType === "score") return <ScorePoll poll={poll} />;
+
   return (
     <section
-      className={`flex flex-col gap-6${poll.closed ? " poll-closed" : ""}`}
+      className={`flex flex-col gap-6 ${poll.resultsVisible === false ? "poll-private" : ""}${poll.closed ? " poll-closed" : ""}`}
     >
       <div>
         <h1 className="font-display text-2xl font-semibold tracking-tight text-foreground">
@@ -194,7 +197,7 @@ export function LivePollView({
           <DeadlineCapsule closesAt={poll.closesAt} />
         ) : null}
         <p className="mt-2 text-sm tabular-nums text-muted">
-          共 {total} 票
+          {poll.resultsVisible !== false ? `共 ${total} 票` : (hasVoted ? "已提交" : "")}
           {poll.closed
             ? " · 已结束"
             : deadlinePassed
@@ -220,7 +223,7 @@ export function LivePollView({
             className={cn(noteNudge && "input-nudge")}
             onChange={(e) => setNote(e.target.value)}
           />
-          {needsNote && !filledNote ? (
+          {needsNote && !filledNote && noteNudge ? (
             <p className={cn("text-xs", noteNudge ? "hint-nudge" : "text-muted")}>
               请先填写{poll.voterNoteLabel}再投票
             </p>
