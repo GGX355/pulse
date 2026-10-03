@@ -24,3 +24,9 @@ Typecheck and production build pass. Lint has no errors (existing platform warni
 
 ## Branches
 dev is the default. Old main had no unique commits and was 61 commits behind dev. It was archived at archive/main-2026-10-03 before local/remote branch removal. Feature work is validated on codex/pulse-glass-preview and fast-forwarded to dev without history rewriting.
+
+## Full-width workspace (2026-10-03)
+
+The embedded app hides laboratory marketing, stories, sample interactions and decorative side panels. Original route content fills the single-column glass workspace. On mobile the card uses almost the whole viewport width and long forms scroll with the document. Appearance controls live in a compact header disclosure. Two-tab navigation retains the original spring and routes both pointer and keyboard input to the original vote/draw pages. Optical parameters and business routes are unchanged.
+
+Validation: typecheck, normal and static builds passed; lint has 0 errors and 7 existing warnings; 15 motion/transition tests passed. Browser checks at 390 and 320 CSS pixels found no horizontal overflow. Sample voting, keyboard mode switching and creation of a new poll passed; long forms have no internal height cap.

@@ -4,8 +4,8 @@ import { Link, useNavigate, useRouterState } from '@tanstack/react-router';
 import source from '../../../vendor/pulse-final/pulse.html?raw';
 import { mountPulse } from '../../../vendor/pulse-final/pulse-runtime.js';
 
-// HTML, styles and motion are exact GitHub pulse-final source. Only asset URLs
-// are adapted here. Route loaders/APIs remain in the original application.
+// GitHub owns the optical frame and workspace styles. The app mounts original
+// routes and moves their navigation/settings into the compact working shell.
 const body = source.split(/<body[^>]*>/)[1].split('</body>')[0]
   .replace(/<script\b[^>]*>[\s\S]*?<\/script>/g, '')
   .replaceAll('href="lab.html"', 'href="/glass-lab/lab.html"')
@@ -27,11 +27,18 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
   } });
   const navigateRef = useRef(navigate); navigateRef.current = navigate;
   useEffect(() => {
+    const frameRoot = host.current!;
     document.body.classList.add('pulse-site', 'pulse-application'); document.body.dataset.material = 'liquid';
     const element = document.createElement('div'); element.className = 'pulse-business-host'; element.id = 'pulse-original-routes';
     const nav = document.createElement('nav'); nav.className = 'pulse-route-nav'; nav.setAttribute('aria-label', '完整活动功能');
     host.current!.querySelector('#poll-panel')!.append(element);
-    host.current!.querySelector('#pulse-stage')!.after(nav);
+    host.current!.querySelector('#pulse-stage')!.before(nav);
+    const settings = document.createElement('details'); settings.className = 'pulse-workspace-settings';
+    const summary = document.createElement('summary'); summary.textContent = '外观';
+    settings.append(summary);
+    const controls = host.current!.querySelector<HTMLElement>('.pulse-controls')!;
+    settings.append(controls);
+    host.current!.querySelector('.site-header')!.append(settings);
     setOutlet(element); setToolbar(nav);
     const app = mountPulse({ embedded: true }); mounted.current = app;
     const preview = import.meta.env.VITE_UI_PREVIEW;
@@ -48,10 +55,15 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
       void navigateRef.current({ to: mode === 'draw' ? '/draw' : '/vote' });
     };
     host.current!.addEventListener('click', routeClick, { signal: controller.signal });
+    host.current!.addEventListener('keydown', event => {
+      if (!(event.target as Element).closest('.pulse-nav') || !['ArrowLeft','ArrowRight','Home','End'].includes(event.key)) return;
+      const selected = host.current!.querySelector('.pulse-nav [aria-selected="true"]');
+      void navigateRef.current({ to: selected?.id === 'draw-tab' ? '/draw' : '/vote' });
+    }, { signal: controller.signal });
     const observer = new MutationObserver(() => app.refreshGlass());
     observer.observe(element, { childList: true, subtree: true });
     observer.observe(nav, { childList: true, subtree: true });
-    return () => { observer.disconnect(); controller.abort(); app.destroy(); element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
+    return () => { observer.disconnect(); controller.abort(); app.destroy(); frameRoot.querySelector('main')?.append(controls); settings.remove(); element.remove(); nav.remove(); document.body.classList.remove('pulse-application'); mounted.current = null; };
   }, []);
   useEffect(() => {
     if (!outlet || !mounted.current) return;
@@ -63,8 +75,8 @@ export function FinalGlassShell({ children }: { children: ReactNode }) {
     {frame}
     {outlet && createPortal(children, outlet)}
     {toolbar && createPortal(<>
-      <Link to="/">当前活动</Link><Link to="/polls">投票历史</Link><Link to="/draw/history">抽签历史</Link>
-      <Link to="/new">发起与管理</Link><Link to="/login">账号</Link><Link to="/compare">材质对照</Link>
+      <Link to="/">当前活动</Link><Link to="/polls">投票记录</Link><Link to="/draw/history">抽签记录</Link>
+      <Link to="/new">发起管理</Link><Link to="/login">账号</Link>
       {import.meta.env.VITE_UI_PREVIEW && <span className="app-preview-label">示例数据 · 刷新后重置</span>}
     </>, toolbar)}
   </>;
